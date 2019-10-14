@@ -8,11 +8,8 @@ import app.coinverse.content.ContentRepository.editContentLabels
 import app.coinverse.content.ContentRepository.getMainFeedList
 import app.coinverse.content.ContentRepository.queryLabeledContentList
 import app.coinverse.content.ContentViewModel
-import app.coinverse.content.models.ContentSwipedEffect
+import app.coinverse.content.models.ContentEffectType.*
 import app.coinverse.content.models.ContentViewEvent.*
-import app.coinverse.content.models.NotifyItemChangedEffect
-import app.coinverse.content.models.SignInEffect
-import app.coinverse.content.models.SnackBarEffect
 import app.coinverse.contentviewmodel.*
 import app.coinverse.home.HomeViewModel
 import app.coinverse.utils.*

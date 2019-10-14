@@ -17,8 +17,9 @@ import app.coinverse.content.ContentRepository.getMainFeedList
 import app.coinverse.content.ContentRepository.queryLabeledContentList
 import app.coinverse.content.ContentRepository.queryMainContentList
 import app.coinverse.content.models.*
-import app.coinverse.content.models.ContentLabeled
+import app.coinverse.content.models.ContentEffectType.*
 import app.coinverse.content.models.ContentViewEvent.*
+import app.coinverse.content.models.ContentViewEvent.ContentLabeled
 import app.coinverse.utils.*
 import app.coinverse.utils.ContentType.*
 import app.coinverse.utils.DateAndTime.getTimeframe
@@ -36,11 +37,11 @@ class ContentViewModel : ViewModel() {
     var contentPlaying = Content()
     val feedViewState: LiveData<FeedViewState> get() = _feedViewState
     val playerViewState: LiveData<PlayerViewState> get() = _playerViewState
-    val viewEffect: LiveData<ContentViewEffects> get() = _viewEffect
+    val viewEffect: LiveData<ContentEffects> get() = _viewEffect
     private val LOG_TAG = ContentViewModel::class.java.simpleName
     private val _feedViewState = MutableLiveData<FeedViewState>()
     private val _playerViewState = MutableLiveData<PlayerViewState>()
-    private val _viewEffect = MutableLiveData<ContentViewEffects>()
+    private val _viewEffect = MutableLiveData<ContentEffects>()
     private val contentLoadingSet = hashSetOf<String>()
 
     fun processEvent(event: ContentViewEvent) {
@@ -52,12 +53,11 @@ class ContentViewModel : ViewModel() {
                         toolbar = setToolbar(event.feedType),
                         contentList = getContentList(event, event.feedType, event.isRealtime,
                                 getTimeframe(event.timeframe)))
-                _viewEffect.value = ContentViewEffects(updateAds = liveData {
+                _viewEffect.value = ContentEffects(updateAds = liveData {
                     emit(Event(UpdateAdsEffect()))
                 })
             }
-            is FeedLoadComplete -> _viewEffect.value = _viewEffect.value?.copy(
-                    screenEmpty = liveData { emit(Event(ScreenEmptyEffect(!event.hasContent))) })
+            is FeedLoadComplete -> _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
             is AudioPlayerLoad -> _playerViewState.value = PlayerViewState(
                     getAudioPlayer(event.contentId, event.filePath, event.previewImageUrl))
             is SwipeToRefresh -> _feedViewState.value = _feedViewState.value?.copy(
@@ -74,36 +74,22 @@ class ContentViewModel : ViewModel() {
                         liveData {
                             when (lce) {
                                 is Loading -> {
-                                    setContentLoadingStatus(contentSelected.content.id, View.VISIBLE)
-                                    _viewEffect.value = _viewEffect.value?.copy(
-                                            notifyItemChanged = liveData {
-                                                emit(Event(NotifyItemChangedEffect(contentSelected.position)))
-                                            })
+                                    setContentLoadingStatus(contentSelected.content.id, VISIBLE)
+                                    _viewEffect.send(NotifyItemChangedEffect(contentSelected.position))
                                     emit(Event(null))
                                 }
                                 is Lce.Content -> {
-                                    setContentLoadingStatus(contentSelected.content.id, View.GONE)
-                                    _viewEffect.value = _viewEffect.value?.copy(
-                                            notifyItemChanged = liveData {
-                                                emit(Event(NotifyItemChangedEffect(contentSelected.position)))
-                                            })
+                                    setContentLoadingStatus(contentSelected.content.id, GONE)
+                                    _viewEffect.send(NotifyItemChangedEffect(contentSelected.position))
                                     emit(Event(lce.packet))
                                 }
                                 is Error -> {
-                                    setContentLoadingStatus(contentSelected.content.id, View.GONE)
-                                    _viewEffect.value = _viewEffect.value?.copy(
-                                            notifyItemChanged = liveData {
-                                                emit(Event(NotifyItemChangedEffect(contentSelected.position)))
-                                            })
-                                    if (lce.packet.filePath.equals(TTS_CHAR_LIMIT_ERROR))
-                                        _viewEffect.value = _viewEffect.value?.copy(
-                                                snackBar = liveData {
-                                                    emit(Event(SnackBarEffect(TTS_CHAR_LIMIT_ERROR_MESSAGE)))
-                                                })
-                                    else _viewEffect.value = _viewEffect.value?.copy(
-                                            snackBar = liveData {
-                                                emit(Event(SnackBarEffect(CONTENT_PLAY_ERROR)))
-                                            })
+                                    setContentLoadingStatus(contentSelected.content.id, GONE)
+                                    _viewEffect.send(NotifyItemChangedEffect(contentSelected.position))
+                                    _viewEffect.send(SnackBarEffect(
+                                            if (lce.packet.filePath.equals(TTS_CHAR_LIMIT_ERROR))
+                                                TTS_CHAR_LIMIT_ERROR_MESSAGE
+                                            else CONTENT_PLAY_ERROR))
                                     emit(Event(null))
                                 }
                             }
@@ -111,9 +97,7 @@ class ContentViewModel : ViewModel() {
                     })
                     YOUTUBE -> {
                         setContentLoadingStatus(contentSelected.content.id, View.GONE)
-                        _viewEffect.value = _viewEffect.value?.copy(notifyItemChanged = liveData {
-                            emit(Event(NotifyItemChangedEffect(contentSelected.position)))
-                        })
+                        _viewEffect.send(NotifyItemChangedEffect(contentSelected.position))
                         _feedViewState.value = _feedViewState.value?.copy(
                                 contentToPlay = liveData<Event<ContentToPlay?>> {
                                     emit(Event(ContentToPlay(contentSelected.position,
@@ -123,14 +107,10 @@ class ContentViewModel : ViewModel() {
                     NONE -> throw IllegalArgumentException("contentType expected, contentType is 'NONE'")
                 }
             }
-            is ContentSwipeDrawed -> _viewEffect.value = _viewEffect.value?.copy(
-                    enableSwipeToRefresh = liveData {
-                        emit(Event(EnableSwipeToRefreshEffect(false)))
-                    })
-            is ContentSwiped -> _viewEffect.value = _viewEffect.value?.copy(contentSwiped = liveData {
-                emit(Event(ContentSwipedEffect(event.feedType, event.actionType, event.position)))
-            })
-            is ContentViewEvent.ContentLabeled -> _feedViewState.value = _feedViewState.value?.copy(
+            is ContentSwipeDrawed -> _viewEffect.send(EnableSwipeToRefreshEffect(false))
+            is ContentSwiped -> _viewEffect.send(ContentSwipedEffect(
+                    event.feedType, event.actionType, event.position))
+            is ContentLabeled -> _feedViewState.value = _feedViewState.value?.copy(
                     contentLabeled =
                     if (event.user != null && !event.user.isAnonymous) {
                         switchMap(editContentLabels(event.feedType, event.actionType, event.content,
@@ -140,24 +120,19 @@ class ContentViewModel : ViewModel() {
                                     is Lce.Content -> {
                                         if (event.feedType == MAIN) {
                                             labelContentFirebaseAnalytics(event.content!!)
-                                            //TODO: Move to Cloud Function. Use with WorkManager.
+                                            //TODO - Move to Cloud Function. Use with WorkManager.
                                             // Return error in ContentLabeled.
                                             updateActionAnalytics(
                                                     event.actionType, event.content, event.user)
                                             if (event.isMainFeedEmptied)
                                                 updateFeedEmptiedActionsAndAnalytics(event.user.uid)
                                         }
-                                        _viewEffect.value = _viewEffect.value?.copy(
-                                                notifyItemChanged = liveData {
-                                                    emit(Event(NotifyItemChangedEffect(event.position)))
-                                                })
-                                        emit(Event(ContentLabeled(event.position, "")))
+                                        _viewEffect.send(
+                                                NotifyItemChangedEffect(event.position))
+                                        emit(Event(app.coinverse.content.models.ContentLabeled(event.position, "")))
                                     }
                                     is Error -> {
-                                        _viewEffect.value = _viewEffect.value?.copy(
-                                                snackBar = liveData {
-                                                    emit(Event(SnackBarEffect(CONTENT_LABEL_ERROR)))
-                                                })
+                                        _viewEffect.send(SnackBarEffect(CONTENT_LABEL_ERROR))
                                         Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
                                         emit(Event(null))
                                     }
@@ -165,25 +140,14 @@ class ContentViewModel : ViewModel() {
                             }
                         }
                     } else {
-                        _viewEffect.value = _viewEffect.value?.copy(notifyItemChanged = liveData {
-                            emit(Event(NotifyItemChangedEffect(event.position)))
-                        })
-                        _viewEffect.value = _viewEffect.value?.copy(signIn = liveData {
-                            emit(Event(SignInEffect(true)))
-                        })
-                        liveData<Event<ContentLabeled?>> { emit(Event(null)) }
+                        _viewEffect.send(NotifyItemChangedEffect(event.position))
+                        _viewEffect.send(SignInEffect(true))
+                        liveData<Event<app.coinverse.content.models.ContentLabeled?>> { emit(Event(null)) }
                     })
-            is ContentShared -> _viewEffect.value = _viewEffect.value?.copy(
-                    shareContentIntent = liveData {
-                        emit(Event(ShareContentIntentEffect(getContent(event.content.id))))
-                    })
-            is ContentSourceOpened -> _viewEffect.value = _viewEffect.value?.copy(
-                    openContentSourceIntent = liveData {
-                        emit(Event(OpenContentSourceIntentEffect(event.url)))
-                    })
-            is UpdateAds -> _viewEffect.value = _viewEffect.value?.copy(updateAds = liveData {
-                emit(Event(UpdateAdsEffect()))
-            })
+            is ContentShared ->
+                _viewEffect.send(ShareContentIntentEffect(getContent(event.content.id)))
+            is ContentSourceOpened -> _viewEffect.send(OpenContentSourceIntentEffect(event.url))
+            is UpdateAds -> _viewEffect.send(UpdateAdsEffect())
         }
     }
 
@@ -210,41 +174,27 @@ class ContentViewModel : ViewModel() {
                     when (lce) {
                         is Loading -> {
                             if (event is SwipeToRefresh)
-                            // TODO - Extension util function.
-                                _viewEffect.value = _viewEffect.value?.copy(
-                                        swipeToRefresh = liveData {
-                                            emit(Event(SwipeToRefreshEffect(true)))
-                                        })
+                                _viewEffect.send(SwipeToRefreshEffect(true))
                             liveData { emitSource(queryMainContentList(timeframe)) }
                         }
                         is Lce.Content -> {
                             if (event is SwipeToRefresh)
-                                _viewEffect.value = _viewEffect.value?.copy(
-                                        swipeToRefresh = liveData {
-                                            emit(Event(SwipeToRefreshEffect(false)))
-                                        })
+                                _viewEffect.send(SwipeToRefreshEffect(false))
                             liveData { emitSource(lce.packet.pagedList!!) }
                         }
                         is Error -> {
                             Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
                             if (event is SwipeToRefresh)
-                                _viewEffect.value = _viewEffect.value?.copy(
-                                        swipeToRefresh = liveData {
-                                            emit(Event(SwipeToRefreshEffect(false)))
-                                        })
-                            _viewEffect.value = _viewEffect.value?.copy(snackBar = liveData {
-                                emit(Event(SnackBarEffect(
-                                        if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
-                                        else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR)))
-                            })
+                                _viewEffect.send(SwipeToRefreshEffect(false))
+                            _viewEffect.send(SnackBarEffect(
+                                    if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
+                                    else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
                             liveData { emitSource(queryMainContentList(timeframe)) }
                         }
                     }
                 }
             else switchMap(queryLabeledContentList(feedType)) { pagedList ->
-                _viewEffect.value = _viewEffect.value?.copy(screenEmpty = liveData {
-                    emit(Event(ScreenEmptyEffect(pagedList.isEmpty())))
-                })
+                _viewEffect.send(ScreenEmptyEffect(pagedList.isEmpty()))
                 liveData { emit(pagedList) }
             }
 

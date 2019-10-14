@@ -8,7 +8,8 @@ import app.coinverse.content.ContentRepository.getMainFeedList
 import app.coinverse.content.ContentRepository.queryLabeledContentList
 import app.coinverse.content.ContentRepository.queryMainContentList
 import app.coinverse.content.ContentViewModel
-import app.coinverse.content.models.*
+import app.coinverse.content.models.ContentEffectType.*
+import app.coinverse.content.models.ContentViewEvent
 import app.coinverse.content.models.ContentViewEvent.*
 import app.coinverse.contentviewmodel.*
 import app.coinverse.utils.*

@@ -10,7 +10,11 @@ import app.coinverse.content.ContentRepository.getContentUri
 import app.coinverse.content.ContentRepository.getMainFeedList
 import app.coinverse.content.ContentRepository.queryLabeledContentList
 import app.coinverse.content.ContentViewModel
-import app.coinverse.content.models.*
+import app.coinverse.content.models.Content
+import app.coinverse.content.models.ContentEffectType.NotifyItemChangedEffect
+import app.coinverse.content.models.ContentEffectType.SnackBarEffect
+import app.coinverse.content.models.ContentPlayer
+import app.coinverse.content.models.ContentToPlay
 import app.coinverse.content.models.ContentViewEvent.*
 import app.coinverse.contentviewmodel.*
 import app.coinverse.home.HomeViewModel

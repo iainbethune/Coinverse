@@ -43,23 +43,18 @@ sealed class ContentEffectType {
 fun MutableLiveData<ContentEffects>.send(effect: ContentEffectType) {
     this.value = when (effect) {
         is SignInEffect -> this.value?.copy(signIn = liveData { emit(Event(effect)) })
-        is NotifyItemChangedEffect -> this.value?.copy(notifyItemChanged = liveData {
-            emit(Event(effect))
-        })
-        is EnableSwipeToRefreshEffect -> this.value?.copy(enableSwipeToRefresh = liveData {
-            emit(Event(effect))
-        })
-        is SwipeToRefreshEffect -> this.value?.copy(swipeToRefresh = liveData {
-            emit(Event(effect))
-        })
+        is NotifyItemChangedEffect -> this.value?.copy(
+                notifyItemChanged = liveData { emit(Event(effect)) })
+        is EnableSwipeToRefreshEffect -> this.value?.copy(
+                enableSwipeToRefresh = liveData { emit(Event(effect)) })
+        is SwipeToRefreshEffect -> this.value?.copy(
+                swipeToRefresh = liveData { emit(Event(effect)) })
         is ContentSwipedEffect -> this.value?.copy(contentSwiped = liveData { emit(Event(effect)) })
         is SnackBarEffect -> this.value?.copy(snackBar = liveData { emit(Event(effect)) })
-        is ShareContentIntentEffect -> this.value?.copy(shareContentIntent = liveData {
-            emit(Event(effect))
-        })
-        is OpenContentSourceIntentEffect -> this.value?.copy(openContentSourceIntent = liveData {
-            emit(Event(effect))
-        })
+        is ShareContentIntentEffect -> this.value?.copy(
+                shareContentIntent = liveData { emit(Event(effect)) })
+        is OpenContentSourceIntentEffect -> this.value?.copy(
+                openContentSourceIntent = liveData { emit(Event(effect)) })
         is ScreenEmptyEffect -> this.value?.copy(screenEmpty = liveData { emit(Event(effect)) })
         is UpdateAdsEffect -> this.value?.copy(updateAds = liveData { emit(Event(effect)) })
     }

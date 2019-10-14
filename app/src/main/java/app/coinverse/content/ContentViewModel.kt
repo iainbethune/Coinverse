@@ -210,36 +210,34 @@ class ContentViewModel : ViewModel() {
                     when (lce) {
                         is Loading -> {
                             if (event is SwipeToRefresh)
-                                _viewEffect.value = _viewEffect.value?.copy(swipeToRefresh = liveData {
-                                    emit(Event(SwipeToRefreshEffect(true)))
-                                })
-                            switchMap(queryMainContentList(timeframe)) { pagedList ->
-                                liveData { emit(pagedList) }
-                            }
+                            // TODO - Extension util function.
+                                _viewEffect.value = _viewEffect.value?.copy(
+                                        swipeToRefresh = liveData {
+                                            emit(Event(SwipeToRefreshEffect(true)))
+                                        })
+                            liveData { emitSource(queryMainContentList(timeframe)) }
                         }
                         is Lce.Content -> {
                             if (event is SwipeToRefresh)
-                                _viewEffect.value = _viewEffect.value?.copy(swipeToRefresh = liveData {
-                                    emit(Event(SwipeToRefreshEffect(false)))
-                                })
-                            switchMap(lce.packet.pagedList!!) { pagedList ->
-                                liveData { emit(pagedList) }
-                            }
+                                _viewEffect.value = _viewEffect.value?.copy(
+                                        swipeToRefresh = liveData {
+                                            emit(Event(SwipeToRefreshEffect(false)))
+                                        })
+                            liveData { emitSource(lce.packet.pagedList!!) }
                         }
                         is Error -> {
                             Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
                             if (event is SwipeToRefresh)
-                                _viewEffect.value = _viewEffect.value?.copy(swipeToRefresh = liveData {
-                                    emit(Event(SwipeToRefreshEffect(false)))
-                                })
+                                _viewEffect.value = _viewEffect.value?.copy(
+                                        swipeToRefresh = liveData {
+                                            emit(Event(SwipeToRefreshEffect(false)))
+                                        })
                             _viewEffect.value = _viewEffect.value?.copy(snackBar = liveData {
                                 emit(Event(SnackBarEffect(
                                         if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
                                         else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR)))
                             })
-                            switchMap(queryMainContentList(timeframe)) { pagedList ->
-                                liveData { emit(pagedList) }
-                            }
+                            liveData { emitSource(queryMainContentList(timeframe)) }
                         }
                     }
                 }

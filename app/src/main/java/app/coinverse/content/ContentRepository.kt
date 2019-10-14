@@ -12,7 +12,7 @@ import androidx.paging.PagedList
 import app.coinverse.BuildConfig.BUILD_TYPE
 import app.coinverse.analytics.models.ContentAction
 import app.coinverse.content.models.*
-import app.coinverse.content.models.ContentViewEvent.ContentSelected
+import app.coinverse.content.models.ContentViewEvents.ContentSelected
 import app.coinverse.content.room.CoinverseDatabase.database
 import app.coinverse.firebase.*
 import app.coinverse.utils.*

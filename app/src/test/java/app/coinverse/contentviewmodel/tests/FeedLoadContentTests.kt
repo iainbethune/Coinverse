@@ -9,8 +9,8 @@ import app.coinverse.content.ContentRepository.queryLabeledContentList
 import app.coinverse.content.ContentRepository.queryMainContentList
 import app.coinverse.content.ContentViewModel
 import app.coinverse.content.models.ContentEffectType.*
-import app.coinverse.content.models.ContentViewEvent
-import app.coinverse.content.models.ContentViewEvent.*
+import app.coinverse.content.models.ContentViewEvents
+import app.coinverse.content.models.ContentViewEvents.*
 import app.coinverse.contentviewmodel.*
 import app.coinverse.utils.*
 import app.coinverse.utils.FeedType.*
@@ -149,7 +149,7 @@ class FeedLoadContentTests {
         ))
     }
 
-    private fun assertContentList(test: FeedLoadContentTest, event: ContentViewEvent) {
+    private fun assertContentList(test: FeedLoadContentTest, event: ContentViewEvents) {
         contentViewModel.feedViewState().contentList.getOrAwaitValue().also { pagedList ->
             assertThat(pagedList).isEqualTo(test.mockFeedList)
             assertThat(contentViewModel.feedViewState().timeframe).isEqualTo(test.timeframe)

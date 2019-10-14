@@ -7,7 +7,7 @@ import app.coinverse.content.ContentRepository.queryLabeledContentList
 import app.coinverse.content.ContentViewModel
 import app.coinverse.content.models.ContentEffectType.OpenContentSourceIntentEffect
 import app.coinverse.content.models.ContentEffectType.UpdateAdsEffect
-import app.coinverse.content.models.ContentViewEvent.*
+import app.coinverse.content.models.ContentViewEvents.*
 import app.coinverse.contentviewmodel.*
 import app.coinverse.utils.FeedType.*
 import app.coinverse.utils.InstantExecutorExtension

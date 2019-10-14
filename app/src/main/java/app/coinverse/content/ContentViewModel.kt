@@ -18,8 +18,8 @@ import app.coinverse.content.ContentRepository.queryLabeledContentList
 import app.coinverse.content.ContentRepository.queryMainContentList
 import app.coinverse.content.models.*
 import app.coinverse.content.models.ContentEffectType.*
-import app.coinverse.content.models.ContentViewEvent.*
-import app.coinverse.content.models.ContentViewEvent.ContentLabeled
+import app.coinverse.content.models.ContentViewEvents.*
+import app.coinverse.content.models.ContentViewEvents.ContentLabeled
 import app.coinverse.utils.*
 import app.coinverse.utils.ContentType.*
 import app.coinverse.utils.DateAndTime.getTimeframe
@@ -44,7 +44,7 @@ class ContentViewModel : ViewModel() {
     private val _viewEffect = MutableLiveData<ContentEffects>()
     private val contentLoadingSet = hashSetOf<String>()
 
-    fun processEvent(event: ContentViewEvent) {
+    fun processEvent(event: ContentViewEvents) {
         when (event) {
             is FeedLoad -> {
                 _feedViewState.value = FeedViewState(
@@ -167,7 +167,7 @@ class ContentViewModel : ViewModel() {
             }
     )
 
-    private fun getContentList(event: ContentViewEvent, feedType: FeedType, isRealtime: Boolean,
+    private fun getContentList(event: ContentViewEvents, feedType: FeedType, isRealtime: Boolean,
                                timeframe: Timestamp) =
             if (feedType == MAIN)
                 switchMap(getMainFeedList(isRealtime, timeframe)) { lce ->

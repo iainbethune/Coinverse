@@ -35,7 +35,6 @@ import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.lang.Runnable
 import java.net.URL
 
 object ContentRepository {
@@ -73,9 +72,10 @@ object ContentRepository {
                                 value!!.documentChanges.all { document ->
                                     document.document.toObject(Content::class.java).let { savedContent ->
                                         labeledSet.add(savedContent.id)
-                                        Thread(Runnable {
-                                            run { database.contentDao().updateContent(savedContent) }
-                                        }).start()
+                                        // TODO - Add error handling
+                                        CoroutineScope(Dispatchers.Main).launch {
+                                            database.contentDao().updateContent(savedContent)
+                                        }
                                     }
                                     true
                                 }
@@ -93,9 +93,10 @@ object ContentRepository {
                                 value!!.documentChanges.all { document ->
                                     document.document.toObject(Content::class.java).let { dismissedContent ->
                                         labeledSet.add(dismissedContent.id)
-                                        Thread(Runnable {
-                                            run { database.contentDao().updateContent(dismissedContent) }
-                                        }).start()
+                                        // TODO - Add error handling
+                                        CoroutineScope(Dispatchers.Main).launch {
+                                            database.contentDao().updateContent(dismissedContent)
+                                        }
                                     }
                                     true
                                 }
@@ -369,7 +370,10 @@ object ContentRepository {
                         else ""
                 userCollection.document(COLLECTIONS_DOCUMENT).collection(collection).document(content!!.id)
                         .set(content).addOnSuccessListener {
-                            Thread(Runnable { run { database.contentDao().updateContent(content) } }).start()
+                            // TODO - Add error handling
+                            CoroutineScope(Dispatchers.Main).launch {
+                                database.contentDao().updateContent(content)
+                            }
                             value = Lce.Content(ContentLabeled(position, ""))
                         }.addOnFailureListener {
                             value = Error(ContentLabeled(

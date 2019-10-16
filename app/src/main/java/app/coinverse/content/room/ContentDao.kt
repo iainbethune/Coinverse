@@ -20,5 +20,5 @@ interface ContentDao {
     suspend fun insertContentList(users: ArrayList<Content?>)
 
     @Update(onConflict = OnConflictStrategy.REPLACE)
-    fun updateContent(content: Content)
+    suspend fun updateContent(content: Content)
 }

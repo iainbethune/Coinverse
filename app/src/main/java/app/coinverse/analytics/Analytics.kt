@@ -17,6 +17,7 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.FirebaseAnalytics.Param
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import kotlinx.coroutines.coroutineScope
 
 private val LOG_TAG = Analytics::class.java.simpleName
 
@@ -31,9 +32,8 @@ object Analytics {
         analytics.setCurrentScreen(activity, viewName, null)
     }
 
-    // TODO - Use Coroutine
-    fun updateActionsAndAnalytics(content: Content, watchPercent: Double) {
-        Thread(Runnable { run { database.contentDao().updateContent(content) } }).start()
+    suspend fun updateActionsAndAnalytics(content: Content, watchPercent: Double) {
+        coroutineScope { database.contentDao().updateContent(content) }
         if (watchPercent >= FINISH_THRESHOLD)
             Bundle().also { bundle ->
                 FirebaseAuth.getInstance().currentUser.also { user ->

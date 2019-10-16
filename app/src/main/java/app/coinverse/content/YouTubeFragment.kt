@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import app.coinverse.BuildConfig
 import app.coinverse.R.id.dialog_content
 import app.coinverse.analytics.Analytics.setCurrentScreen
@@ -21,6 +22,7 @@ import app.coinverse.utils.auth.APP_API_KEY_STAGING
 import com.google.android.youtube.player.YouTubeInitializationResult
 import com.google.android.youtube.player.YouTubePlayer
 import com.google.android.youtube.player.YouTubePlayerSupportFragment
+import kotlinx.coroutines.launch
 
 class YouTubeFragment : Fragment() {
 
@@ -117,8 +119,10 @@ class YouTubeFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         if (youtubePlayer != null)
-            updateActionsAndAnalytics(contentToPlay.content,
-                    (youtubePlayer.currentTimeMillis.toDouble() - seekToPositionMillis)
-                            / youtubePlayer.durationMillis)
+            viewLifecycleOwner.lifecycleScope.launch {
+                updateActionsAndAnalytics(contentToPlay.content,
+                        (youtubePlayer.currentTimeMillis.toDouble() - seekToPositionMillis)
+                                / youtubePlayer.durationMillis)
+            }
     }
 }

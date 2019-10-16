@@ -117,7 +117,7 @@ class FeedLoadContentTests {
         // Coinverse
 
         // ContentRepository
-        every { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(test.mockFeedList,
+        coEvery { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(test.mockFeedList,
                 test.lceState)
         every { queryMainContentList(any()) } returns mockQueryMainContentList(test.mockFeedList)
         every { queryLabeledContentList(test.feedType) } returns mockQueryMainContentList(
@@ -172,7 +172,7 @@ class FeedLoadContentTests {
     }
 
     private fun verifyTests(test: FeedLoadContentTest) {
-        verify {
+        coVerify {
             when (test.feedType) {
                 MAIN -> {
                     getMainFeedList(test.isRealtime, any())

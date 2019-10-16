@@ -108,7 +108,7 @@ class PlayContentTests {
         // Coinverse
 
         // ContentRepository
-        every { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(
+        coEvery { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(
                 test.mockFeedList, CONTENT)
         every {
             queryLabeledContentList(test.feedType)

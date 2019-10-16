@@ -154,7 +154,7 @@ class LabelContentTests {
         // Coinverse
 
         // ContentRepository
-        every { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(
+        coEvery { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(
                 test.mockFeedList, CONTENT)
         every {
             editContentLabels(test.feedType, test.actionType, test.mockContent,

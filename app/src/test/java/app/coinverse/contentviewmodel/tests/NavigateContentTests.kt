@@ -14,10 +14,7 @@ import app.coinverse.utils.InstantExecutorExtension
 import app.coinverse.utils.LCE_STATE.CONTENT
 import app.coinverse.utils.observe
 import app.coinverse.utils.viewEffects
-import io.mockk.every
-import io.mockk.mockkObject
-import io.mockk.unmockkAll
-import io.mockk.verify
+import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.runBlocking
@@ -89,7 +86,7 @@ class NavigateContentTests {
 
     private fun mockComponents(test: NavigateContentTest) {
         // Coinverse - ContentRepository
-        every { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(
+        coEvery { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(
                 test.mockFeedList, CONTENT)
         every {
             queryLabeledContentList(test.feedType)
@@ -98,7 +95,7 @@ class NavigateContentTests {
     }
 
     private fun verifyTests(test: NavigateContentTest) {
-        verify {
+        coVerify {
             when (test.feedType) {
                 MAIN -> getMainFeedList(test.isRealtime, any())
                 SAVED, DISMISSED -> queryLabeledContentList(test.feedType)

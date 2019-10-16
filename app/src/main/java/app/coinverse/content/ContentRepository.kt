@@ -228,6 +228,20 @@ object ContentRepository {
     fun queryLabeledContentList(feedType: FeedType) =
             liveDataBuilder(database.contentDao().queryLabeledContentList(feedType))
 
+    /*suspend fun queryLabeledContentList(feedType: FeedType): LiveData<PagedList<Content>> = withContext(Dispatchers.Default){
+        val labeledContent = async { database.contentDao().queryLabeledContentList(feedType) }
+        liveDataBuilderTwo(labeledContent.await())
+    }
+
+    suspend fun liveDataBuilderTwo(dataSource: DataSource.Factory<Int, Content>) = withContext(Dispatchers.Default) {
+        LivePagedListBuilder(dataSource,
+                PagedList.Config.Builder().setEnablePlaceholders(true)
+                        .setPrefetchDistance(PREFETCH_DISTANCE)
+                        .setPageSize(PAGE_SIZE)
+                        .build())
+                .build()
+    }*/
+
     fun liveDataBuilder(dataSource: DataSource.Factory<Int, Content>) =
             LivePagedListBuilder(dataSource,
                     PagedList.Config.Builder().setEnablePlaceholders(true)

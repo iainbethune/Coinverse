@@ -73,7 +73,7 @@ object ContentRepository {
                                     document.document.toObject(Content::class.java).let { savedContent ->
                                         labeledSet.add(savedContent.id)
                                         // TODO - Add error handling
-                                        CoroutineScope(Dispatchers.Main).launch {
+                                        CoroutineScope(Dispatchers.Default).launch {
                                             database.contentDao().updateContent(savedContent)
                                         }
                                     }
@@ -371,7 +371,7 @@ object ContentRepository {
                 userCollection.document(COLLECTIONS_DOCUMENT).collection(collection).document(content!!.id)
                         .set(content).addOnSuccessListener {
                             // TODO - Add error handling
-                            CoroutineScope(Dispatchers.Main).launch {
+                            CoroutineScope(Dispatchers.Default).launch {
                                 database.contentDao().updateContent(content)
                             }
                             value = Lce.Content(ContentLabeled(position, ""))

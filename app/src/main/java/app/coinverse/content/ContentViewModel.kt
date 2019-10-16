@@ -175,17 +175,16 @@ class ContentViewModel : ViewModel() {
                                        timeframe: Timestamp) =
             if (feedType == MAIN)
                 switchMap(getMainFeedList(isRealtime, timeframe)) { lce ->
-                    //switchMap(liveData { emitSource(getMainFeedList(isRealtime, timeframe)) }) { lce ->
                     when (lce) {
                         is Loading -> {
                             if (event is SwipeToRefresh)
                                 _viewEffect.send(SwipeToRefreshEffect(true))
-                            liveData { emitSource(queryMainContentList(timeframe)) }
+                            queryMainContentList(timeframe)
                         }
                         is Lce.Content -> {
                             if (event is SwipeToRefresh)
                                 _viewEffect.send(SwipeToRefreshEffect(false))
-                            liveData { emitSource(lce.packet.pagedList!!) }
+                            lce.packet.pagedList!!
                         }
                         is Error -> {
                             Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
@@ -194,7 +193,7 @@ class ContentViewModel : ViewModel() {
                             _viewEffect.send(SnackBarEffect(
                                     if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
                                     else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
-                            liveData { emitSource(queryMainContentList(timeframe)) }
+                            queryMainContentList(timeframe)
                         }
                     }
                 }
@@ -202,34 +201,6 @@ class ContentViewModel : ViewModel() {
                 _viewEffect.send(ScreenEmptyEffect(pagedList.isEmpty()))
                 liveData { emit(pagedList) }
             }
-    /*if (feedType == MAIN)
-        switchMap(liveData { emitSource(getMainFeedList(isRealtime, timeframe)) }) { lce ->
-            when (lce) {
-                is Loading -> {
-                    if (event is SwipeToRefresh)
-                        _viewEffect.send(SwipeToRefreshEffect(true))
-                    liveData { emitSource(queryMainContentList(timeframe)) }
-                }
-                is Lce.Content -> {
-                    if (event is SwipeToRefresh)
-                        _viewEffect.send(SwipeToRefreshEffect(false))
-                    liveData { emitSource(lce.packet.pagedList!!) }
-                }
-                is Error -> {
-                    Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
-                    if (event is SwipeToRefresh)
-                        _viewEffect.send(SwipeToRefreshEffect(false))
-                    _viewEffect.send(SnackBarEffect(
-                            if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
-                            else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
-                    liveData { emitSource(queryMainContentList(timeframe)) }
-                }
-            }
-        }
-    else switchMap(queryLabeledContentList(feedType)) { pagedList ->
-        _viewEffect.send(ScreenEmptyEffect(pagedList.isEmpty()))
-        liveData { emit(pagedList) }
-    }*/
 
 
     /**

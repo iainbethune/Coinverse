@@ -17,7 +17,7 @@ interface ContentDao {
     fun queryLabeledContentList(feedType: FeedType): DataSource.Factory<Int, Content>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertContentList(users: ArrayList<Content?>)
+    suspend fun insertContentList(users: ArrayList<Content?>)
 
     @Update(onConflict = OnConflictStrategy.REPLACE)
     fun updateContent(content: Content)

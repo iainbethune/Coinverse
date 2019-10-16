@@ -31,6 +31,7 @@ import app.coinverse.utils.models.Lce.Loading
 import app.coinverse.utils.models.ToolbarState
 import com.crashlytics.android.Crashlytics
 import com.google.firebase.Timestamp
+import kotlinx.coroutines.launch
 
 class ContentViewModel : ViewModel() {
     //TODO: Add isRealtime Boolean for paid feature.
@@ -47,12 +48,14 @@ class ContentViewModel : ViewModel() {
     fun processEvent(event: ContentViewEvents) {
         when (event) {
             is FeedLoad -> {
-                _feedViewState.value = FeedViewState(
-                        feedType = event.feedType,
-                        timeframe = event.timeframe,
-                        toolbar = setToolbar(event.feedType),
-                        contentList = getContentList(event, event.feedType, event.isRealtime,
-                                getTimeframe(event.timeframe)))
+                viewModelScope.launch {
+                    _feedViewState.value = FeedViewState(
+                            feedType = event.feedType,
+                            timeframe = event.timeframe,
+                            toolbar = setToolbar(event.feedType),
+                            contentList = getContentList(event, event.feedType, event.isRealtime,
+                                    getTimeframe(event.timeframe)))
+                }
                 _viewEffect.value = ContentEffects(updateAds = liveData {
                     emit(Event(UpdateAdsEffect()))
                 })
@@ -60,12 +63,13 @@ class ContentViewModel : ViewModel() {
             is FeedLoadComplete -> _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
             is AudioPlayerLoad -> _playerViewState.value = PlayerViewState(
                     getAudioPlayer(event.contentId, event.filePath, event.previewImageUrl))
-            is SwipeToRefresh -> _feedViewState.value = _feedViewState.value?.copy(
-                    contentList = getContentList(
-                            event = event,
-                            feedType = event.feedType,
-                            isRealtime = event.isRealtime,
-                            timeframe = getTimeframe(event.timeframe)))
+            is SwipeToRefresh -> viewModelScope.launch {
+                _feedViewState.value = _feedViewState.value?.copy(contentList = getContentList(
+                        event = event,
+                        feedType = event.feedType,
+                        isRealtime = event.isRealtime,
+                        timeframe = getTimeframe(event.timeframe)))
+            }
             is ContentSelected -> {
                 val contentSelected = ContentSelected(event.position, event.content)
                 when (contentSelected.content.contentType) {
@@ -167,10 +171,11 @@ class ContentViewModel : ViewModel() {
             }
     )
 
-    private fun getContentList(event: ContentViewEvents, feedType: FeedType, isRealtime: Boolean,
-                               timeframe: Timestamp) =
+    suspend private fun getContentList(event: ContentViewEvents, feedType: FeedType, isRealtime: Boolean,
+                                       timeframe: Timestamp) =
             if (feedType == MAIN)
                 switchMap(getMainFeedList(isRealtime, timeframe)) { lce ->
+                    //switchMap(liveData { emitSource(getMainFeedList(isRealtime, timeframe)) }) { lce ->
                     when (lce) {
                         is Loading -> {
                             if (event is SwipeToRefresh)
@@ -197,6 +202,35 @@ class ContentViewModel : ViewModel() {
                 _viewEffect.send(ScreenEmptyEffect(pagedList.isEmpty()))
                 liveData { emit(pagedList) }
             }
+    /*if (feedType == MAIN)
+        switchMap(liveData { emitSource(getMainFeedList(isRealtime, timeframe)) }) { lce ->
+            when (lce) {
+                is Loading -> {
+                    if (event is SwipeToRefresh)
+                        _viewEffect.send(SwipeToRefreshEffect(true))
+                    liveData { emitSource(queryMainContentList(timeframe)) }
+                }
+                is Lce.Content -> {
+                    if (event is SwipeToRefresh)
+                        _viewEffect.send(SwipeToRefreshEffect(false))
+                    liveData { emitSource(lce.packet.pagedList!!) }
+                }
+                is Error -> {
+                    Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
+                    if (event is SwipeToRefresh)
+                        _viewEffect.send(SwipeToRefreshEffect(false))
+                    _viewEffect.send(SnackBarEffect(
+                            if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
+                            else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
+                    liveData { emitSource(queryMainContentList(timeframe)) }
+                }
+            }
+        }
+    else switchMap(queryLabeledContentList(feedType)) { pagedList ->
+        _viewEffect.send(ScreenEmptyEffect(pagedList.isEmpty()))
+        liveData { emit(pagedList) }
+    }*/
+
 
     /**
      * Get audiocast player for PlayerNotificationManager in [AudioService].

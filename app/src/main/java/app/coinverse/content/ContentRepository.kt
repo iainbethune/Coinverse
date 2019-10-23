@@ -40,18 +40,9 @@ import java.net.URL
 object ContentRepository {
     private val LOG_TAG = ContentRepository::class.java.simpleName
     //TODO - Create Cloud Function to update user's mainFeedCollection.
-    suspend fun getMainFeedList(isRealtime: Boolean, timeframe: Timestamp): MutableLiveData<Lce<PagedListResult>> = withContext(Dispatchers.Default) {
-        val scope = this
+    suspend fun getMainFeedList(scope: CoroutineScope, isRealtime: Boolean, timeframe: Timestamp)
+            : MutableLiveData<Lce<PagedListResult>> = withContext(Dispatchers.Default) {
         MutableLiveData<Lce<PagedListResult>>().also { lce ->
-            /*coroutineScope {
-                    var one = async { Status.LOADING }
-                    var two = async { Status.ERROR }
-                    println("The answer is ${one.await()} ${two.await()}")
-                }*/
-
-
-            //coroutineScope {
-
             lce.postValue(Loading())
             val labeledSet = HashSet<String>()
             var errorMessage = ""
@@ -154,16 +145,16 @@ object ContentRepository {
                                     }
                                     true
                                 }
-                                /*launch {
-                                        database.contentDao().insertContentList(contentList)
-                                    }.start()*/
-                                CoroutineScope(Dispatchers.Default).launch {
+                                launch {
+                                    database.contentDao().insertContentList(contentList)
+                                }.start()
+                                /*CoroutineScope(Dispatchers.Default).launch {
                                     try {
                                         database.contentDao().insertContentList(contentList)
                                     } catch (e: Throwable) {
                                         cancel()
                                     }
-                                }.start()
+                                }.start()*/
                             }
                             launch {
                                 lce.postValue(Lce.Content(PagedListResult(
@@ -176,42 +167,29 @@ object ContentRepository {
                                     "non-realtime content_en_collection: ${it.localizedMessage}")))
                         }
                 // Logged out, non-realtime.
-            } else {
-                val newContentList = arrayListOf<Content?>()
-                contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                        .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                        .get()
-                        .addOnCompleteListener {
-                            arrayListOf<Content?>().also { contentList ->
-                                it.result!!.documents.all { document ->
-                                    contentList.add(document.toObject(Content::class.java))
-                                    true
-                                }
-                                newContentList.addAll(contentList)
+            } else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                    .get()
+                    .addOnCompleteListener {
+                        arrayListOf<Content?>().also { contentList ->
+                            it.result!!.documents.all { document ->
+                                contentList.add(document.toObject(Content::class.java))
+                                true
                             }
-                            //launch {
-                            //scope.launch {
-                            //CoroutineScope(scope.coroutineContext).launch {
-                            CoroutineScope(Dispatchers.Default).launch {
-                                try {
-                                    database.contentDao().insertContentList(newContentList)
-                                } catch (e: Exception) {
-                                    this.cancel()
-                                }
-                            }.invokeOnCompletion { throwable ->
-                                if (throwable == null)
-                                    lce.postValue(Lce.Content(PagedListResult(
-                                            queryMainContentList(timeframe),
-                                            "")))
-                                else
-                                    println("Log error")
+                            scope.launch {
+                                database.contentDao().insertContentList(contentList)
                             }
-                        }.addOnFailureListener {
-                            lce.postValue(Error(PagedListResult(
-                                    null, "Error retrieving logged out, " +
-                                    "non-realtime content_en_collection: " + "${it.localizedMessage}")))
+                            lce.postValue(Lce.Content(PagedListResult(
+                                    queryMainContentList(timeframe),
+                                    "")))
                         }
-            }
+                    }.addOnFailureListener {
+                        lce.postValue(Error(PagedListResult(
+                                null, "Error retrieving logged out, " +
+                                "non-realtime content_en_collection: "
+                                + "${it.localizedMessage}")))
+                    }
+
         }
     }
 

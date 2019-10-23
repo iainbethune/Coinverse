@@ -174,7 +174,7 @@ class ContentViewModel : ViewModel() {
     suspend private fun getContentList(event: ContentViewEvents, feedType: FeedType, isRealtime: Boolean,
                                        timeframe: Timestamp) =
             if (feedType == MAIN)
-                switchMap(getMainFeedList(isRealtime, timeframe)) { lce ->
+                switchMap(getMainFeedList(viewModelScope, isRealtime, timeframe)) { lce ->
                     when (lce) {
                         is Loading -> {
                             if (event is SwipeToRefresh)

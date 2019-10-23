@@ -6,6 +6,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
+import androidx.lifecycle.liveData
 import androidx.paging.DataSource
 import androidx.paging.LivePagedListBuilder
 import androidx.paging.PagedList
@@ -32,7 +33,10 @@ import com.google.firebase.firestore.Query.Direction.DESCENDING
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.google.firebase.storage.FirebaseStorage
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URL
@@ -40,158 +44,153 @@ import java.net.URL
 object ContentRepository {
     private val LOG_TAG = ContentRepository::class.java.simpleName
     //TODO - Create Cloud Function to update user's mainFeedCollection.
-    suspend fun getMainFeedList(scope: CoroutineScope, isRealtime: Boolean, timeframe: Timestamp)
-            : MutableLiveData<Lce<PagedListResult>> = withContext(Dispatchers.Default) {
-        MutableLiveData<Lce<PagedListResult>>().also { lce ->
-            lce.postValue(Loading())
-            val labeledSet = HashSet<String>()
-            var errorMessage = ""
-            //TODO - Retrieve labeledSet from Firestore.
+    fun getMainFeedList(scope: CoroutineScope, isRealtime: Boolean, timeframe: Timestamp) =
+            liveData<Lce<PagedListResult>> {
+                this.also { lce ->
+                    lce.emit(Loading())
+                    val labeledSet = HashSet<String>()
+                    var errorMessage = ""
+                    //TODO - Retrieve labeledSet from Firestore.
 
-            if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
-                usersDocument.collection(getInstance().currentUser!!.uid).also { user ->
-                    // Get save_collection.
-                    user.document(COLLECTIONS_DOCUMENT)
-                            .collection(SAVE_COLLECTION).orderBy(TIMESTAMP, DESCENDING)
-                            .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                            .addSnapshotListener(EventListener { value, error ->
-                                error?.run {
-                                    errorMessage = "Error retrieving user save_collection: " +
-                                            "${error.localizedMessage}"
-                                    return@EventListener
-                                }
-                                value!!.documentChanges.all { document ->
-                                    document.document.toObject(Content::class.java).let { savedContent ->
-                                        labeledSet.add(savedContent.id)
-                                        // TODO - Add error handling
-                                        CoroutineScope(Dispatchers.Default).launch {
-                                            database.contentDao().updateContent(savedContent)
+                    if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
+                        usersDocument.collection(getInstance().currentUser!!.uid).also { user ->
+                            // Get save_collection.
+                            user.document(COLLECTIONS_DOCUMENT)
+                                    .collection(SAVE_COLLECTION).orderBy(TIMESTAMP, DESCENDING)
+                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                                    .addSnapshotListener(EventListener { value, error ->
+                                        error?.run {
+                                            errorMessage = "Error retrieving user save_collection: " +
+                                                    "${error.localizedMessage}"
+                                            return@EventListener
+                                        }
+                                        value!!.documentChanges.all { document ->
+                                            document.document.toObject(Content::class.java).let { savedContent ->
+                                                labeledSet.add(savedContent.id)
+                                                // TODO - Add error handling
+                                                CoroutineScope(Dispatchers.Default).launch {
+                                                    database.contentDao().updateContent(savedContent)
+                                                }
+                                            }
+                                            true
+                                        }
+                                    })
+                            // Get dismiss_collection.
+                            user.document(COLLECTIONS_DOCUMENT)
+                                    .collection(DISMISS_COLLECTION)
+                                    .orderBy(TIMESTAMP, DESCENDING)
+                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                                    .addSnapshotListener(EventListener { value, error ->
+                                        error?.run {
+                                            errorMessage = "Error retrieving user dismiss_collection: ${error.localizedMessage}"
+                                            return@EventListener
+                                        }
+                                        value!!.documentChanges.all { document ->
+                                            document.document.toObject(Content::class.java).let { dismissedContent ->
+                                                labeledSet.add(dismissedContent.id)
+                                                // TODO - Add error handling
+                                                CoroutineScope(Dispatchers.Main).launch {
+                                                    database.contentDao().updateContent(dismissedContent)
+                                                }
+                                            }
+                                            true
+                                        }
+                                    })
+                            if (errorMessage.isNotEmpty())
+                                lce.emit(Error(PagedListResult(null, errorMessage)))
+                        }
+                        // Logged in and realtime enabled.
+                        if (isRealtime) //TODO - Retrieve labeledSet from Firestore.
+                            contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                                    .addSnapshotListener(EventListener { value, error ->
+                                        error?.run {
+                                            scope.launch {
+                                                lce.emit(Error(PagedListResult(
+                                                        null,
+                                                        "Error retrieving logged in," +
+                                                                " realtime content_en_collection: " +
+                                                                "${error.localizedMessage}")))
+                                            }
+                                            return@EventListener
+                                        }
+                                        arrayListOf<Content?>().also { contentList ->
+                                            value!!.documentChanges.all { document ->
+                                                document.document.toObject(Content::class.java).also { content ->
+                                                    if (!labeledSet.contains(content.id))
+                                                        contentList.add(content)
+                                                }
+                                                true
+                                            }
+                                            scope.launch {
+                                                database.contentDao().insertContentList(contentList)
+                                            }
+                                            scope.launch {
+                                                lce.emit(Lce.Content(PagedListResult(
+                                                        queryMainContentList(timeframe),
+                                                        "")))
+                                            }
+                                        }
+                                    })
+                        // Logged in, non-realtime.
+                        else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                                .get().addOnCompleteListener {
+                                    arrayListOf<Content?>().also { contentList ->
+                                        it.result!!.documentChanges.all { document ->
+                                            document.document.toObject(Content::class.java).also { content ->
+                                                if (!labeledSet.contains(content.id))
+                                                    contentList.add(content)
+                                            }
+                                            true
+                                        }
+                                        scope.launch {
+                                            database.contentDao().insertContentList(contentList)
                                         }
                                     }
-                                    true
-                                }
-                            })
-                    // Get dismiss_collection.
-                    user.document(COLLECTIONS_DOCUMENT)
-                            .collection(DISMISS_COLLECTION)
-                            .orderBy(TIMESTAMP, DESCENDING)
-                            .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                            .addSnapshotListener(EventListener { value, error ->
-                                error?.run {
-                                    errorMessage = "Error retrieving user dismiss_collection: ${error.localizedMessage}"
-                                    return@EventListener
-                                }
-                                value!!.documentChanges.all { document ->
-                                    document.document.toObject(Content::class.java).let { dismissedContent ->
-                                        labeledSet.add(dismissedContent.id)
-                                        // TODO - Add error handling
-                                        CoroutineScope(Dispatchers.Main).launch {
-                                            database.contentDao().updateContent(dismissedContent)
-                                        }
+                                    scope.launch {
+                                        lce.emit(Lce.Content(PagedListResult(
+                                                queryMainContentList(timeframe),
+                                                "")))
                                     }
-                                    true
+                                }.addOnFailureListener {
+                                    scope.launch {
+                                        lce.emit(Error(PagedListResult(
+                                                null, "Error retrieving logged in, " +
+                                                "non-realtime content_en_collection: ${it.localizedMessage}")))
+                                    }
                                 }
-                            })
-                    if (errorMessage.isNotEmpty())
-                        lce.postValue(Error(PagedListResult(null, errorMessage)))
-                }
-                // Logged in and realtime enabled.
-                if (isRealtime) //TODO - Retrieve labeledSet from Firestore.
-                    contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                        // Logged out, non-realtime.
+                    } else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
                             .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                            .addSnapshotListener(EventListener { value, error ->
-                                error?.run {
-                                    lce.postValue(Error(PagedListResult(
-                                            null,
-                                            "Error retrieving logged in," +
-                                                    " realtime content_en_collection: " +
-                                                    "${error.localizedMessage}")))
-                                    return@EventListener
-                                }
+                            .get()
+                            .addOnCompleteListener {
                                 arrayListOf<Content?>().also { contentList ->
-                                    value!!.documentChanges.all { document ->
-                                        document.document.toObject(Content::class.java).also { content ->
-                                            if (!labeledSet.contains(content.id))
-                                                contentList.add(content)
-                                        }
+                                    it.result!!.documents.all { document ->
+                                        contentList.add(document.toObject(Content::class.java))
                                         true
                                     }
-                                    /*launch {
-                                            database.contentDao().insertContentList(contentList)
-                                        }.start()*/
-                                    CoroutineScope(Dispatchers.Default).launch {
-                                        try {
-                                            database.contentDao().insertContentList(contentList)
-                                        } catch (e: Throwable) {
-                                            cancel()
-                                        }
-                                    }.start()
                                     scope.launch {
-                                        lce.postValue(Lce.Content(PagedListResult(
+                                        database.contentDao().insertContentList(contentList)
+                                    }
+                                    scope.launch {
+                                        lce.emit(Lce.Content(PagedListResult(
                                                 queryMainContentList(timeframe),
                                                 "")))
                                     }
                                 }
-                            })
-                // Logged in, non-realtime.
-                else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                        .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                        .get().addOnCompleteListener {
-                            arrayListOf<Content?>().also { contentList ->
-                                it.result!!.documentChanges.all { document ->
-                                    document.document.toObject(Content::class.java).also { content ->
-                                        if (!labeledSet.contains(content.id))
-                                            contentList.add(content)
-                                    }
-                                    true
+                            }.addOnFailureListener {
+                                scope.launch {
+                                    lce.emit(Error(PagedListResult(
+                                            null, "Error retrieving logged out, " +
+                                            "non-realtime content_en_collection: "
+                                            + "${it.localizedMessage}")))
                                 }
-                                launch {
-                                    database.contentDao().insertContentList(contentList)
-                                }.start()
-                                /*CoroutineScope(Dispatchers.Default).launch {
-                                    try {
-                                        database.contentDao().insertContentList(contentList)
-                                    } catch (e: Throwable) {
-                                        cancel()
-                                    }
-                                }.start()*/
                             }
-                            launch {
-                                lce.postValue(Lce.Content(PagedListResult(
-                                        queryMainContentList(timeframe),
-                                        "")))
-                            }
-                        }.addOnFailureListener {
-                            lce.postValue(Error(PagedListResult(
-                                    null, "Error retrieving logged in, " +
-                                    "non-realtime content_en_collection: ${it.localizedMessage}")))
-                        }
-                // Logged out, non-realtime.
-            } else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                    .get()
-                    .addOnCompleteListener {
-                        arrayListOf<Content?>().also { contentList ->
-                            it.result!!.documents.all { document ->
-                                contentList.add(document.toObject(Content::class.java))
-                                true
-                            }
-                            scope.launch {
-                                database.contentDao().insertContentList(contentList)
-                            }
-                            lce.postValue(Lce.Content(PagedListResult(
-                                    queryMainContentList(timeframe),
-                                    "")))
-                        }
-                    }.addOnFailureListener {
-                        lce.postValue(Error(PagedListResult(
-                                null, "Error retrieving logged out, " +
-                                "non-realtime content_en_collection: "
-                                + "${it.localizedMessage}")))
-                    }
 
-        }
-    }
+                }
+            }
+
 
     fun getContent(contentId: String) =
             MutableLiveData<Event<Content>>().apply {

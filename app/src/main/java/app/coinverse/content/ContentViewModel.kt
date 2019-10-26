@@ -117,8 +117,13 @@ class ContentViewModel : ViewModel() {
             is ContentLabeled -> _feedViewState.value = _feedViewState.value?.copy(
                     contentLabeled =
                     if (event.user != null && !event.user.isAnonymous) {
-                        switchMap(editContentLabels(event.feedType, event.actionType, event.content,
-                                event.user, event.position)) { lce ->
+                        switchMap(editContentLabels(
+                                scope = viewModelScope,
+                                feedType = event.feedType,
+                                actionType = event.actionType,
+                                content = event.content,
+                                user = event.user,
+                                position = event.position)) { lce ->
                             liveData {
                                 when (lce) {
                                     is Lce.Content -> {

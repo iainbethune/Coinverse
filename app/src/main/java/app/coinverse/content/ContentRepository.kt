@@ -45,6 +45,7 @@ object ContentRepository {
     private val LOG_TAG = ContentRepository::class.java.simpleName
     //TODO - Create Cloud Function to update user's mainFeedCollection.
     fun getMainFeedList(scope: CoroutineScope, isRealtime: Boolean, timeframe: Timestamp) =
+            // TODO - Refactor to Flow.
             liveData<Lce<PagedListResult>> {
                 this.also { lce ->
                     lce.emit(Loading())
@@ -67,8 +68,8 @@ object ContentRepository {
                                         value!!.documentChanges.all { document ->
                                             document.document.toObject(Content::class.java).let { savedContent ->
                                                 labeledSet.add(savedContent.id)
-                                                // TODO - Add error handling
-                                                CoroutineScope(Dispatchers.Default).launch {
+                                                // TODO - Update to list
+                                                scope.launch {
                                                     database.contentDao().updateContent(savedContent)
                                                 }
                                             }
@@ -88,8 +89,8 @@ object ContentRepository {
                                         value!!.documentChanges.all { document ->
                                             document.document.toObject(Content::class.java).let { dismissedContent ->
                                                 labeledSet.add(dismissedContent.id)
-                                                // TODO - Add error handling
-                                                CoroutineScope(Dispatchers.Main).launch {
+                                                // TODO - Update to list
+                                                scope.launch {
                                                     database.contentDao().updateContent(dismissedContent)
                                                 }
                                             }
@@ -124,11 +125,13 @@ object ContentRepository {
                                             }
                                             scope.launch {
                                                 database.contentDao().insertContentList(contentList)
-                                            }
-                                            scope.launch {
-                                                lce.emit(Lce.Content(PagedListResult(
-                                                        queryMainContentList(timeframe),
-                                                        "")))
+                                            }.invokeOnCompletion {
+                                                if (it?.cause == null)
+                                                    scope.launch {
+                                                        lce.emit(Lce.Content(PagedListResult(
+                                                                queryMainContentList(timeframe),
+                                                                "")))
+                                                    }
                                             }
                                         }
                                     })
@@ -146,12 +149,14 @@ object ContentRepository {
                                         }
                                         scope.launch {
                                             database.contentDao().insertContentList(contentList)
+                                        }.invokeOnCompletion {
+                                            if (it?.cause == null)
+                                                scope.launch {
+                                                    lce.emit(Lce.Content(PagedListResult(
+                                                            queryMainContentList(timeframe),
+                                                            "")))
+                                                }
                                         }
-                                    }
-                                    scope.launch {
-                                        lce.emit(Lce.Content(PagedListResult(
-                                                queryMainContentList(timeframe),
-                                                "")))
                                     }
                                 }.addOnFailureListener {
                                     scope.launch {
@@ -170,13 +175,16 @@ object ContentRepository {
                                         contentList.add(document.toObject(Content::class.java))
                                         true
                                     }
+                                    // TODO - Methodize
                                     scope.launch {
                                         database.contentDao().insertContentList(contentList)
-                                    }
-                                    scope.launch {
-                                        lce.emit(Lce.Content(PagedListResult(
-                                                queryMainContentList(timeframe),
-                                                "")))
+                                    }.invokeOnCompletion {
+                                        if (it?.cause == null)
+                                            scope.launch {
+                                                lce.emit(Lce.Content(PagedListResult(
+                                                        queryMainContentList(timeframe),
+                                                        "")))
+                                            }
                                     }
                                 }
                             }.addOnFailureListener {
@@ -228,6 +236,7 @@ object ContentRepository {
                     .build()
 
     fun getAudiocast(contentSelected: ContentSelected) =
+            //TODO - Refactor with liveData { ... }
             MutableLiveData<Lce<ContentToPlay>>().apply {
                 value = Loading()
                 val content = contentSelected.content
@@ -313,8 +322,8 @@ object ContentRepository {
         }
     }
 
-    fun editContentLabels(feedType: FeedType, actionType: UserActionType, content: Content?,
-                          user: FirebaseUser, position: Int) =
+    fun editContentLabels(scope: CoroutineScope, feedType: FeedType, actionType: UserActionType,
+                          content: Content?, user: FirebaseUser, position: Int) =
             usersDocument.collection(user.uid).let { userReference ->
                 content?.feedType =
                         if (actionType == SAVE) SAVED
@@ -331,27 +340,29 @@ object ContentRepository {
                                 position)) { lce ->
                             when (lce) {
                                 is Loading -> MutableLiveData()
-                                is Lce.Content -> addContentLabelSwitchMap(actionType, userReference,
-                                        content!!, position)
+                                is Lce.Content -> addContentLabelSwitchMap(scope, actionType,
+                                        userReference, content!!, position)
                                 is Error -> MutableLiveData<Lce<ContentLabeled>>().apply {
                                     value = lce
                                 }
                             }
                         }
-                    } else addContentLabelSwitchMap(actionType, userReference, content!!, position)
+                    } else addContentLabelSwitchMap(scope, actionType, userReference, content!!,
+                            position)
                 } else MutableLiveData()
             }
 
-    fun addContentLabelSwitchMap(actionType: UserActionType, userReference: CollectionReference,
+    fun addContentLabelSwitchMap(scope: CoroutineScope, actionType: UserActionType,
+                                 userReference: CollectionReference,
                                  content: Content, position: Int) =
-            Transformations.switchMap(addContentLabel(actionType, userReference,
+            Transformations.switchMap(addContentLabel(scope, actionType, userReference,
                     content, position)) { lce ->
                 MutableLiveData<Lce<ContentLabeled>>().apply {
                     value = lce
                 }
             }
 
-    fun addContentLabel(actionType: UserActionType, userCollection: CollectionReference,
+    fun addContentLabel(scope: CoroutineScope, actionType: UserActionType, userCollection: CollectionReference,
                         content: Content?, position: Int) =
             MutableLiveData<Lce<ContentLabeled>>().apply {
                 value = Loading()
@@ -361,11 +372,12 @@ object ContentRepository {
                         else ""
                 userCollection.document(COLLECTIONS_DOCUMENT).collection(collection).document(content!!.id)
                         .set(content).addOnSuccessListener {
-                            // TODO - Add error handling
-                            CoroutineScope(Dispatchers.Default).launch {
+                            scope.launch {
                                 database.contentDao().updateContent(content)
+                            }.invokeOnCompletion {
+                                if (it?.cause == null)
+                                    value = Lce.Content(ContentLabeled(position, ""))
                             }
-                            value = Lce.Content(ContentLabeled(position, ""))
                         }.addOnFailureListener {
                             value = Error(ContentLabeled(
                                     position,

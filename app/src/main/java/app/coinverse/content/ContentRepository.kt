@@ -54,7 +54,8 @@ object ContentRepository {
                         usersDocument.collection(getInstance().currentUser!!.uid).also { user ->
                             // Get save_collection.
                             user.document(COLLECTIONS_DOCUMENT)
-                                    .collection(SAVE_COLLECTION).orderBy(TIMESTAMP, DESCENDING)
+                                    .collection(SAVE_COLLECTION)
+                                    .orderBy(TIMESTAMP, DESCENDING)
                                     .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
                                     .addSnapshotListener(EventListener { value, error ->
                                         error?.run {
@@ -62,15 +63,17 @@ object ContentRepository {
                                                     "${error.localizedMessage}"
                                             return@EventListener
                                         }
-                                        val contentList = ArrayList<Content?>()
-                                        value!!.documentChanges.all { document ->
-                                            document.document.toObject(Content::class.java).let { savedContent ->
-                                                contentList.add(savedContent)
-                                                labeledSet.add(savedContent.id)
+                                        ArrayList<Content?>().also { contentList ->
+                                            value!!.documentChanges.all { document ->
+                                                document.document.toObject(Content::class.java)
+                                                        .let { savedContent ->
+                                                            contentList.add(savedContent)
+                                                            labeledSet.add(savedContent.id)
+                                                        }
+                                                true
                                             }
-                                            true
+                                            insertContentListToDb(scope, contentList)
                                         }
-                                        insertContentListToDb(scope, contentList)
                                     })
                             // Get dismiss_collection.
                             user.document(COLLECTIONS_DOCUMENT)
@@ -82,15 +85,17 @@ object ContentRepository {
                                             errorMessage = "Error retrieving user dismiss_collection: ${error.localizedMessage}"
                                             return@EventListener
                                         }
-                                        val contentList = ArrayList<Content?>()
-                                        value!!.documentChanges.all { document ->
-                                            document.document.toObject(Content::class.java).let { dismissedContent ->
-                                                contentList.add(dismissedContent)
-                                                labeledSet.add(dismissedContent.id)
+                                        ArrayList<Content?>().also { contentList ->
+                                            value!!.documentChanges.all { document ->
+                                                document.document.toObject(Content::class.java)
+                                                        .let { dismissedContent ->
+                                                            contentList.add(dismissedContent)
+                                                            labeledSet.add(dismissedContent.id)
+                                                        }
+                                                true
                                             }
-                                            true
+                                            insertContentListToDb(scope, contentList)
                                         }
-                                        insertContentListToDb(scope, contentList)
                                     })
                             if (errorMessage.isNotEmpty())
                                 lce.emit(Error(PagedListResult(null, errorMessage)))

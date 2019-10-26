@@ -119,7 +119,7 @@ class YouTubeFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         if (youtubePlayer != null)
-            viewLifecycleOwner.lifecycleScope.launch {
+            lifecycleScope.launch {
                 updateActionsAndAnalytics(contentToPlay.content,
                         (youtubePlayer.currentTimeMillis.toDouble() - seekToPositionMillis)
                                 / youtubePlayer.durationMillis)

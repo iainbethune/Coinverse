@@ -4,6 +4,7 @@ import android.graphics.Bitmap.CompressFormat
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
+import androidx.lifecycle.LiveDataScope
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
 import androidx.lifecycle.liveData
@@ -33,10 +34,7 @@ import com.google.firebase.firestore.Query.Direction.DESCENDING
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.google.firebase.storage.FirebaseStorage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URL
@@ -52,7 +50,6 @@ object ContentRepository {
                     val labeledSet = HashSet<String>()
                     var errorMessage = ""
                     //TODO - Retrieve labeledSet from Firestore.
-
                     if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
                         usersDocument.collection(getInstance().currentUser!!.uid).also { user ->
                             // Get save_collection.
@@ -65,16 +62,15 @@ object ContentRepository {
                                                     "${error.localizedMessage}"
                                             return@EventListener
                                         }
+                                        val contentList = ArrayList<Content?>()
                                         value!!.documentChanges.all { document ->
                                             document.document.toObject(Content::class.java).let { savedContent ->
+                                                contentList.add(savedContent)
                                                 labeledSet.add(savedContent.id)
-                                                // TODO - Update to list
-                                                scope.launch {
-                                                    database.contentDao().updateContent(savedContent)
-                                                }
                                             }
                                             true
                                         }
+                                        insertContentListToDb(scope, contentList)
                                     })
                             // Get dismiss_collection.
                             user.document(COLLECTIONS_DOCUMENT)
@@ -86,16 +82,15 @@ object ContentRepository {
                                             errorMessage = "Error retrieving user dismiss_collection: ${error.localizedMessage}"
                                             return@EventListener
                                         }
+                                        val contentList = ArrayList<Content?>()
                                         value!!.documentChanges.all { document ->
                                             document.document.toObject(Content::class.java).let { dismissedContent ->
+                                                contentList.add(dismissedContent)
                                                 labeledSet.add(dismissedContent.id)
-                                                // TODO - Update to list
-                                                scope.launch {
-                                                    database.contentDao().updateContent(dismissedContent)
-                                                }
                                             }
                                             true
                                         }
+                                        insertContentListToDb(scope, contentList)
                                     })
                             if (errorMessage.isNotEmpty())
                                 lce.emit(Error(PagedListResult(null, errorMessage)))
@@ -123,22 +118,14 @@ object ContentRepository {
                                                 }
                                                 true
                                             }
-                                            scope.launch {
-                                                database.contentDao().insertContentList(contentList)
-                                            }.invokeOnCompletion {
-                                                if (it?.cause == null)
-                                                    scope.launch {
-                                                        lce.emit(Lce.Content(PagedListResult(
-                                                                queryMainContentList(timeframe),
-                                                                "")))
-                                                    }
-                                            }
+                                            insertContentListToDb(scope, contentList)
+                                                    .emitPagedList(scope, timeframe, lce)
                                         }
                                     })
                         // Logged in, non-realtime.
                         else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                                .get().addOnCompleteListener {
+                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get()
+                                .addOnCompleteListener {
                                     arrayListOf<Content?>().also { contentList ->
                                         it.result!!.documentChanges.all { document ->
                                             document.document.toObject(Content::class.java).also { content ->
@@ -147,16 +134,8 @@ object ContentRepository {
                                             }
                                             true
                                         }
-                                        scope.launch {
-                                            database.contentDao().insertContentList(contentList)
-                                        }.invokeOnCompletion {
-                                            if (it?.cause == null)
-                                                scope.launch {
-                                                    lce.emit(Lce.Content(PagedListResult(
-                                                            queryMainContentList(timeframe),
-                                                            "")))
-                                                }
-                                        }
+                                        insertContentListToDb(scope, contentList)
+                                                .emitPagedList(scope, timeframe, lce)
                                     }
                                 }.addOnFailureListener {
                                     scope.launch {
@@ -167,25 +146,15 @@ object ContentRepository {
                                 }
                         // Logged out, non-realtime.
                     } else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                            .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                            .get()
+                            .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get()
                             .addOnCompleteListener {
                                 arrayListOf<Content?>().also { contentList ->
                                     it.result!!.documents.all { document ->
                                         contentList.add(document.toObject(Content::class.java))
                                         true
                                     }
-                                    // TODO - Methodize
-                                    scope.launch {
-                                        database.contentDao().insertContentList(contentList)
-                                    }.invokeOnCompletion {
-                                        if (it?.cause == null)
-                                            scope.launch {
-                                                lce.emit(Lce.Content(PagedListResult(
-                                                        queryMainContentList(timeframe),
-                                                        "")))
-                                            }
-                                    }
+                                    insertContentListToDb(scope, contentList)
+                                            .emitPagedList(scope, timeframe, lce)
                                 }
                             }.addOnFailureListener {
                                 scope.launch {
@@ -198,7 +167,6 @@ object ContentRepository {
 
                 }
             }
-
 
     fun getContent(contentId: String) =
             MutableLiveData<Event<Content>>().apply {
@@ -226,14 +194,6 @@ object ContentRepository {
                         .build())
                 .build()
     }*/
-
-    fun liveDataBuilder(dataSource: DataSource.Factory<Int, Content>) =
-            LivePagedListBuilder(dataSource,
-                    PagedList.Config.Builder().setEnablePlaceholders(true)
-                            .setPrefetchDistance(PREFETCH_DISTANCE)
-                            .setPageSize(PAGE_SIZE)
-                            .build())
-                    .build()
 
     fun getAudiocast(contentSelected: ContentSelected) =
             //TODO - Refactor with liveData { ... }
@@ -352,53 +312,6 @@ object ContentRepository {
                 } else MutableLiveData()
             }
 
-    fun addContentLabelSwitchMap(scope: CoroutineScope, actionType: UserActionType,
-                                 userReference: CollectionReference,
-                                 content: Content, position: Int) =
-            Transformations.switchMap(addContentLabel(scope, actionType, userReference,
-                    content, position)) { lce ->
-                MutableLiveData<Lce<ContentLabeled>>().apply {
-                    value = lce
-                }
-            }
-
-    fun addContentLabel(scope: CoroutineScope, actionType: UserActionType, userCollection: CollectionReference,
-                        content: Content?, position: Int) =
-            MutableLiveData<Lce<ContentLabeled>>().apply {
-                value = Loading()
-                val collection =
-                        if (actionType == SAVE) SAVE_COLLECTION
-                        else if (actionType == DISMISS) DISMISS_COLLECTION
-                        else ""
-                userCollection.document(COLLECTIONS_DOCUMENT).collection(collection).document(content!!.id)
-                        .set(content).addOnSuccessListener {
-                            scope.launch {
-                                database.contentDao().updateContent(content)
-                            }.invokeOnCompletion {
-                                if (it?.cause == null)
-                                    value = Lce.Content(ContentLabeled(position, ""))
-                            }
-                        }.addOnFailureListener {
-                            value = Error(ContentLabeled(
-                                    position,
-                                    "'${content.title}' failed to be added to collection $collection"))
-                        }
-            }
-
-    fun removeContentLabel(userReference: CollectionReference, collection: String, content: Content?,
-                           position: Int) =
-            MutableLiveData<Lce<ContentLabeled>>().apply {
-                value = Loading()
-                userReference.document(COLLECTIONS_DOCUMENT).collection(collection).document(content!!.id)
-                        .delete().addOnSuccessListener {
-                            value = Lce.Content(ContentLabeled(position, ""))
-                        }.addOnFailureListener {
-                            value = Error(ContentLabeled(
-                                    position,
-                                    "Content failed to be deleted from ${collection}: ${it.localizedMessage}"))
-                        }
-            }
-
     //TODO - Move to Cloud Function
     fun updateContentActionCounter(contentId: String, counterType: String) {
         contentEnCollection.document(contentId).apply {
@@ -453,4 +366,76 @@ object ContentRepository {
                     })
         }
     }
+
+    private fun insertContentListToDb(scope: CoroutineScope, contentList: ArrayList<Content?>) =
+            scope.launch {
+                database.contentDao().insertContentList(contentList)
+            }
+
+    private fun Job.emitPagedList(scope: CoroutineScope, timeframe: Timestamp,
+                                  lce: LiveDataScope<Lce<PagedListResult>>) =
+            this.invokeOnCompletion {
+                if (it?.cause == null)
+                    scope.launch {
+                        lce.emit(Lce.Content(PagedListResult(queryMainContentList(timeframe),
+                                "")))
+                    }
+            }
+
+    private fun liveDataBuilder(dataSource: DataSource.Factory<Int, Content>) =
+            LivePagedListBuilder(dataSource,
+                    PagedList.Config.Builder().setEnablePlaceholders(true)
+                            .setPrefetchDistance(PREFETCH_DISTANCE)
+                            .setPageSize(PAGE_SIZE)
+                            .build())
+                    .build()
+
+    private fun addContentLabelSwitchMap(scope: CoroutineScope, actionType: UserActionType,
+                                         userReference: CollectionReference,
+                                         content: Content, position: Int) =
+            Transformations.switchMap(addContentLabel(scope, actionType, userReference,
+                    content, position)) { lce ->
+                MutableLiveData<Lce<ContentLabeled>>().apply {
+                    value = lce
+                }
+            }
+
+
+    private fun addContentLabel(scope: CoroutineScope, actionType: UserActionType,
+                                userCollection: CollectionReference,
+                                content: Content?, position: Int) =
+            MutableLiveData<Lce<ContentLabeled>>().apply {
+                value = Loading()
+                val collection =
+                        if (actionType == SAVE) SAVE_COLLECTION
+                        else if (actionType == DISMISS) DISMISS_COLLECTION
+                        else ""
+                userCollection.document(COLLECTIONS_DOCUMENT).collection(collection).document(content!!.id)
+                        .set(content).addOnSuccessListener {
+                            scope.launch {
+                                database.contentDao().updateContent(content)
+                            }.invokeOnCompletion {
+                                if (it?.cause == null)
+                                    value = Lce.Content(ContentLabeled(position, ""))
+                            }
+                        }.addOnFailureListener {
+                            value = Error(ContentLabeled(
+                                    position,
+                                    "'${content.title}' failed to be added to collection $collection"))
+                        }
+            }
+
+    private fun removeContentLabel(userReference: CollectionReference, collection: String, content: Content?,
+                                   position: Int) =
+            MutableLiveData<Lce<ContentLabeled>>().apply {
+                value = Loading()
+                userReference.document(COLLECTIONS_DOCUMENT).collection(collection).document(content!!.id)
+                        .delete().addOnSuccessListener {
+                            value = Lce.Content(ContentLabeled(position, ""))
+                        }.addOnFailureListener {
+                            value = Error(ContentLabeled(
+                                    position,
+                                    "Content failed to be deleted from ${collection}: ${it.localizedMessage}"))
+                        }
+            }
 }

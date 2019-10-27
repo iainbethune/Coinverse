@@ -287,18 +287,16 @@ object ContentRepository {
                                 else if (actionType == DISMISS && feedType == SAVED) SAVE_COLLECTION
                                 else "",
                                 content,
-                                position)) { lce ->
-                            when (lce) {
-                                is Loading -> MutableLiveData()
-                                is Lce.Content -> addContentLabelSwitchMap(scope, actionType,
-                                        userReference, content!!, position)
-                                is Error -> MutableLiveData<Lce<ContentLabeled>>().apply {
-                                    value = lce
+                                position)) { contentLabeled ->
+                            liveData<Lce<ContentLabeled>> {
+                                when (contentLabeled) {
+                                    is Lce.Content -> addContentLabel(scope, actionType,
+                                            userReference, content, position)
+                                    is Error -> liveData { emit(contentLabeled) }
                                 }
                             }
                         }
-                    } else addContentLabelSwitchMap(scope, actionType, userReference, content!!,
-                            position)
+                    } else addContentLabel(scope, actionType, userReference, content, position)
                 } else MutableLiveData()
             }
 
@@ -380,17 +378,6 @@ object ContentRepository {
                             .build())
                     .build()
 
-    private fun addContentLabelSwitchMap(scope: CoroutineScope, actionType: UserActionType,
-                                         userReference: CollectionReference,
-                                         content: Content, position: Int) =
-            Transformations.switchMap(addContentLabel(scope, actionType, userReference,
-                    content, position)) { lce ->
-                MutableLiveData<Lce<ContentLabeled>>().apply {
-                    value = lce
-                }
-            }
-
-
     private fun addContentLabel(scope: CoroutineScope, actionType: UserActionType,
                                 userCollection: CollectionReference,
                                 content: Content?, position: Int) =
@@ -415,8 +402,9 @@ object ContentRepository {
                         }
             }
 
-    private fun removeContentLabel(userReference: CollectionReference, collection: String, content: Content?,
-                                   position: Int) =
+
+    private fun removeContentLabel(userReference: CollectionReference, collection: String,
+                                   content: Content?, position: Int) =
             MutableLiveData<Lce<ContentLabeled>>().apply {
                 value = Loading()
                 userReference.document(COLLECTIONS_DOCUMENT).collection(collection).document(content!!.id)

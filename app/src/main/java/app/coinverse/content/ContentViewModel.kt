@@ -281,21 +281,21 @@ class ContentViewModel : ViewModel() {
      * @param url String content image preview url
      * @return LiveData<(Event<ContentBitmap>?)> content preview image as ByteArray
      */
-    private fun bitmapToByteArray(url: String) = liveData {
-        emitSource(switchMap(ContentRepository.bitmapToByteArray(url)) { lce ->
+    private fun bitmapToByteArray(url: String) =
+            switchMap(ContentRepository.bitmapToByteArray(url)) { lce ->
             liveData {
                 when (lce) {
                     is Lce.Content -> emit(Event(ContentBitmap(
                             lce.packet.image, lce.packet.errorMessage)))
                     is Error -> {
                         Crashlytics.log(Log.WARN, LOG_TAG,
-                                "bitmapToByteArray error or null - ${lce.packet.errorMessage}")
+                                "bitmapToByteArray error or null - " +
+                                        "${lce.packet.errorMessage}")
                         emit(Event(ContentBitmap(lce.packet.image, lce.packet.errorMessage)))
                     }
                 }
             }
-        })
-    }
+            }
 
     /**
      * Collects and combines errors from building the audio player.

@@ -34,7 +34,10 @@ import com.google.firebase.firestore.Query.Direction.DESCENDING
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.google.firebase.storage.FirebaseStorage
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URL
@@ -185,7 +188,6 @@ object ContentRepository {
             liveDataBuilder(database.contentDao().queryLabeledContentList(feedType))
 
     fun getAudiocast(contentSelected: ContentSelected) =
-            //TODO - Refactor with liveData { ... }
             MutableLiveData<Lce<ContentToPlay>>().apply {
                 value = Loading()
                 val content = contentSelected.content
@@ -253,22 +255,21 @@ object ContentRepository {
                         }
             }
 
-    suspend fun bitmapToByteArray(url: String) = withContext(Dispatchers.IO) {
-        MutableLiveData<Lce<ContentBitmap>>().apply {
-            postValue(Loading())
-            postValue(Lce.Content(ContentBitmap(ByteArrayOutputStream().apply {
-                try {
-                    BitmapFactory.decodeStream(URL(url).openConnection().apply {
-                        doInput = true
-                        connect()
-                    }.getInputStream())
-                } catch (e: IOException) {
-                    postValue(Error(ContentBitmap(ByteArray(0),
-                            "bitmapToByteArray error or null - ${e.localizedMessage}")))
-                    null
-                }?.compress(CompressFormat.JPEG, BITMAP_COMPRESSION_QUALITY, this)
-            }.toByteArray(), "")))
-        }
+    fun bitmapToByteArray(url: String) = liveData(Dispatchers.IO) {
+        val data = this
+        data.emit(Loading())
+        data.emit(Lce.Content(ContentBitmap(ByteArrayOutputStream().apply {
+            try {
+                BitmapFactory.decodeStream(URL(url).openConnection().apply {
+                    doInput = true
+                    connect()
+                }.getInputStream())
+            } catch (e: IOException) {
+                data.emit(Error(ContentBitmap(ByteArray(0),
+                        "bitmapToByteArray error or null - ${e.localizedMessage}")))
+                null
+            }?.compress(CompressFormat.JPEG, BITMAP_COMPRESSION_QUALITY, this)
+        }.toByteArray(), "")))
     }
 
     fun editContentLabels(scope: CoroutineScope, feedType: FeedType, actionType: UserActionType,

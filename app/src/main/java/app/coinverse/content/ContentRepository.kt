@@ -39,100 +39,83 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URL
 
+// TODO - Refactor LiveData to Coroutine Flow - https://kotlinlang.org/docs/reference/coroutines/flow.html
 object ContentRepository {
     private val LOG_TAG = ContentRepository::class.java.simpleName
-    //TODO - Create Cloud Function to update user's mainFeedCollection.
     fun getMainFeedList(scope: CoroutineScope, isRealtime: Boolean, timeframe: Timestamp) =
-            // TODO - Refactor to Flow.
             liveData<Lce<PagedListResult>> {
-                this.also { lce ->
-                    lce.emit(Loading())
-                    val labeledSet = HashSet<String>()
-                    var errorMessage = ""
-                    //TODO - Retrieve labeledSet from Firestore.
-                    if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
-                        usersDocument.collection(getInstance().currentUser!!.uid).also { user ->
-                            // Get save_collection.
-                            user.document(COLLECTIONS_DOCUMENT)
-                                    .collection(SAVE_COLLECTION)
-                                    .orderBy(TIMESTAMP, DESCENDING)
-                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                                    .addSnapshotListener(EventListener { value, error ->
-                                        error?.run {
-                                            errorMessage = "Error retrieving user save_collection: " +
-                                                    "${error.localizedMessage}"
-                                            return@EventListener
+                val lce = this
+                lce.emit(Loading())
+                val labeledSet = HashSet<String>()
+                var errorMessage = ""
+                // TODO - Retrieve labeledSet from Firestore.
+                if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
+                    usersDocument.collection(getInstance().currentUser!!.uid).also { user ->
+                        // Get save_collection.
+                        user.document(COLLECTIONS_DOCUMENT)
+                                .collection(SAVE_COLLECTION)
+                                .orderBy(TIMESTAMP, DESCENDING)
+                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                                .addSnapshotListener(EventListener { value, error ->
+                                    error?.run {
+                                        errorMessage = "Error retrieving user save_collection: " +
+                                                "${error.localizedMessage}"
+                                        return@EventListener
+                                    }
+                                    ArrayList<Content?>().also { contentList ->
+                                        value!!.documentChanges.all { document ->
+                                            document.document.toObject(Content::class.java)
+                                                    .let { savedContent ->
+                                                        contentList.add(savedContent)
+                                                        labeledSet.add(savedContent.id)
+                                                    }
+                                            true
                                         }
-                                        ArrayList<Content?>().also { contentList ->
-                                            value!!.documentChanges.all { document ->
-                                                document.document.toObject(Content::class.java)
-                                                        .let { savedContent ->
-                                                            contentList.add(savedContent)
-                                                            labeledSet.add(savedContent.id)
-                                                        }
-                                                true
-                                            }
-                                            insertContentListToDb(scope, contentList)
+                                        insertContentListToDb(scope, contentList)
+                                    }
+                                })
+                        // Get dismiss_collection.
+                        user.document(COLLECTIONS_DOCUMENT)
+                                .collection(DISMISS_COLLECTION)
+                                .orderBy(TIMESTAMP, DESCENDING)
+                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                                .addSnapshotListener(EventListener { value, error ->
+                                    error?.run {
+                                        errorMessage = "Error retrieving user dismiss_collection: ${error.localizedMessage}"
+                                        return@EventListener
+                                    }
+                                    ArrayList<Content?>().also { contentList ->
+                                        value!!.documentChanges.all { document ->
+                                            document.document.toObject(Content::class.java)
+                                                    .let { dismissedContent ->
+                                                        contentList.add(dismissedContent)
+                                                        labeledSet.add(dismissedContent.id)
+                                                    }
+                                            true
                                         }
-                                    })
-                            // Get dismiss_collection.
-                            user.document(COLLECTIONS_DOCUMENT)
-                                    .collection(DISMISS_COLLECTION)
-                                    .orderBy(TIMESTAMP, DESCENDING)
-                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                                    .addSnapshotListener(EventListener { value, error ->
-                                        error?.run {
-                                            errorMessage = "Error retrieving user dismiss_collection: ${error.localizedMessage}"
-                                            return@EventListener
+                                        insertContentListToDb(scope, contentList)
+                                    }
+                                })
+                        if (errorMessage.isNotEmpty())
+                            lce.emit(Error(PagedListResult(null, errorMessage)))
+                    }
+                    // Logged in and realtime enabled.
+                    if (isRealtime) //TODO - Retrieve labeledSet from Firestore.
+                        contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                                .addSnapshotListener(EventListener { value, error ->
+                                    error?.run {
+                                        scope.launch {
+                                            lce.emit(Error(PagedListResult(
+                                                    null,
+                                                    "Error retrieving logged in," +
+                                                            " realtime content_en_collection: " +
+                                                            "${error.localizedMessage}")))
                                         }
-                                        ArrayList<Content?>().also { contentList ->
-                                            value!!.documentChanges.all { document ->
-                                                document.document.toObject(Content::class.java)
-                                                        .let { dismissedContent ->
-                                                            contentList.add(dismissedContent)
-                                                            labeledSet.add(dismissedContent.id)
-                                                        }
-                                                true
-                                            }
-                                            insertContentListToDb(scope, contentList)
-                                        }
-                                    })
-                            if (errorMessage.isNotEmpty())
-                                lce.emit(Error(PagedListResult(null, errorMessage)))
-                        }
-                        // Logged in and realtime enabled.
-                        if (isRealtime) //TODO - Retrieve labeledSet from Firestore.
-                            contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                                    .addSnapshotListener(EventListener { value, error ->
-                                        error?.run {
-                                            scope.launch {
-                                                lce.emit(Error(PagedListResult(
-                                                        null,
-                                                        "Error retrieving logged in," +
-                                                                " realtime content_en_collection: " +
-                                                                "${error.localizedMessage}")))
-                                            }
-                                            return@EventListener
-                                        }
-                                        arrayListOf<Content?>().also { contentList ->
-                                            value!!.documentChanges.all { document ->
-                                                document.document.toObject(Content::class.java).also { content ->
-                                                    if (!labeledSet.contains(content.id))
-                                                        contentList.add(content)
-                                                }
-                                                true
-                                            }
-                                            insertContentListToDb(scope, contentList)
-                                                    .emitPagedList(scope, timeframe, lce)
-                                        }
-                                    })
-                        // Logged in, non-realtime.
-                        else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get()
-                                .addOnCompleteListener {
+                                        return@EventListener
+                                    }
                                     arrayListOf<Content?>().also { contentList ->
-                                        it.result!!.documentChanges.all { document ->
+                                        value!!.documentChanges.all { document ->
                                             document.document.toObject(Content::class.java).also { content ->
                                                 if (!labeledSet.contains(content.id))
                                                     contentList.add(content)
@@ -142,20 +125,17 @@ object ContentRepository {
                                         insertContentListToDb(scope, contentList)
                                                 .emitPagedList(scope, timeframe, lce)
                                     }
-                                }.addOnFailureListener {
-                                    scope.launch {
-                                        lce.emit(Error(PagedListResult(
-                                                null, "Error retrieving logged in, " +
-                                                "non-realtime content_en_collection: ${it.localizedMessage}")))
-                                    }
-                                }
-                        // Logged out, non-realtime.
-                    } else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                                })
+                    // Logged in, non-realtime.
+                    else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
                             .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get()
                             .addOnCompleteListener {
                                 arrayListOf<Content?>().also { contentList ->
-                                    it.result!!.documents.all { document ->
-                                        contentList.add(document.toObject(Content::class.java))
+                                    it.result!!.documentChanges.all { document ->
+                                        document.document.toObject(Content::class.java).also { content ->
+                                            if (!labeledSet.contains(content.id))
+                                                contentList.add(content)
+                                        }
                                         true
                                     }
                                     insertContentListToDb(scope, contentList)
@@ -164,13 +144,31 @@ object ContentRepository {
                             }.addOnFailureListener {
                                 scope.launch {
                                     lce.emit(Error(PagedListResult(
-                                            null, "Error retrieving logged out, " +
-                                            "non-realtime content_en_collection: "
-                                            + "${it.localizedMessage}")))
+                                            null, "Error retrieving logged in, " +
+                                            "non-realtime content_en_collection: ${it.localizedMessage}")))
                                 }
                             }
+                    // Logged out, non-realtime.
+                } else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                        .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get()
+                        .addOnCompleteListener {
+                            arrayListOf<Content?>().also { contentList ->
+                                it.result!!.documents.all { document ->
+                                    contentList.add(document.toObject(Content::class.java))
+                                    true
+                                }
+                                insertContentListToDb(scope, contentList)
+                                        .emitPagedList(scope, timeframe, lce)
+                            }
+                        }.addOnFailureListener {
+                            scope.launch {
+                                lce.emit(Error(PagedListResult(
+                                        null, "Error retrieving logged out, " +
+                                        "non-realtime content_en_collection: "
+                                        + "${it.localizedMessage}")))
+                            }
+                        }
 
-                }
             }
 
     fun getContent(contentId: String) =
@@ -185,20 +183,6 @@ object ContentRepository {
 
     fun queryLabeledContentList(feedType: FeedType) =
             liveDataBuilder(database.contentDao().queryLabeledContentList(feedType))
-
-    /*suspend fun queryLabeledContentList(feedType: FeedType): LiveData<PagedList<Content>> = withContext(Dispatchers.Default){
-        val labeledContent = async { database.contentDao().queryLabeledContentList(feedType) }
-        liveDataBuilderTwo(labeledContent.await())
-    }
-
-    suspend fun liveDataBuilderTwo(dataSource: DataSource.Factory<Int, Content>) = withContext(Dispatchers.Default) {
-        LivePagedListBuilder(dataSource,
-                PagedList.Config.Builder().setEnablePlaceholders(true)
-                        .setPrefetchDistance(PREFETCH_DISTANCE)
-                        .setPageSize(PAGE_SIZE)
-                        .build())
-                .build()
-    }*/
 
     fun getAudiocast(contentSelected: ContentSelected) =
             //TODO - Refactor with liveData { ... }

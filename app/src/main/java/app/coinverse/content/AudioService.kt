@@ -43,11 +43,13 @@ import com.google.android.exoplayer2.util.Util
 import com.google.android.exoplayer2.video.VideoRendererEventListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 private val LOG_TAG = AudioService::class.java.simpleName
 
 class AudioService : Service() {
+    private lateinit var job: Job
     private var player: SimpleExoPlayer? = null
     private var playerNotificationManager: PlayerNotificationManager? = null
     private var content = Content()
@@ -77,6 +79,7 @@ class AudioService : Service() {
         playerNotificationManager?.setPlayer(null)
         player?.release()
         wakeAndwifiLockManager(false)
+        job.cancel()
         super.onDestroy()
     }
 
@@ -197,8 +200,7 @@ class AudioService : Service() {
             if (player?.currentPosition!! > 0L && newSeekPositionMillis > seekToPositionMillis
                     && playOrPausePressed == false && playbackState == Player.STATE_BUFFERING)
                 seekToPositionMillis = newSeekPositionMillis.toInt()
-            // TODO - Close onDestroy
-            CoroutineScope(Dispatchers.Default).launch {
+            job = CoroutineScope(Dispatchers.IO).launch {
                 updateActionsAndAnalytics(content, getWatchPercent(player?.currentPosition!!.toDouble(),
                         seekToPositionMillis.toDouble(), player?.duration!!.toDouble()))
             }
@@ -233,6 +235,7 @@ class AudioService : Service() {
         player?.playWhenReady = false
         wakeAndwifiLockManager(false)
         stopForeground(true)
+        job.cancel()
         stopSelf()
     }
 

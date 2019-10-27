@@ -15,7 +15,6 @@ interface ContentDao {
 
     @Query("SELECT * FROM content WHERE feedType = :feedType ORDER BY timestamp DESC")
     fun queryLabeledContentList(feedType: FeedType): DataSource.Factory<Int, Content>
-    //suspend fun queryLabeledContentList(feedType: FeedType): DataSource.Factory<Int, Content>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertContentList(users: ArrayList<Content?>)

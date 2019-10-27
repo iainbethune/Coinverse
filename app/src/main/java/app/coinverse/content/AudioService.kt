@@ -201,7 +201,8 @@ class AudioService : Service() {
                     && playOrPausePressed == false && playbackState == Player.STATE_BUFFERING)
                 seekToPositionMillis = newSeekPositionMillis.toInt()
             job = CoroutineScope(Dispatchers.IO).launch {
-                updateActionsAndAnalytics(content, getWatchPercent(player?.currentPosition!!.toDouble(),
+                updateActionsAndAnalytics(content,
+                        getWatchPercent(player?.currentPosition!!.toDouble(),
                         seekToPositionMillis.toDouble(), player?.duration!!.toDouble()))
             }
         }

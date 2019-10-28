@@ -2,6 +2,7 @@ package app.coinverse.contentviewmodel.tests
 
 import android.widget.ProgressBar.GONE
 import android.widget.ProgressBar.VISIBLE
+import androidx.lifecycle.viewModelScope
 import app.coinverse.R.string.*
 import app.coinverse.content.ContentRepository
 import app.coinverse.content.ContentRepository.getMainFeedList
@@ -20,8 +21,7 @@ import com.crashlytics.android.Crashlytics
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.newSingleThreadContext
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runBlockingTest
 import kotlinx.coroutines.test.setMain
@@ -36,7 +36,7 @@ import org.junit.jupiter.params.provider.MethodSource
 
 @ExtendWith(InstantExecutorExtension::class)
 class FeedLoadContentTests {
-    private val mainThreadSurrogate = newSingleThreadContext(UI_THREAD)
+    private val testDispatcher = TestCoroutineDispatcher()
     private val contentViewModel = ContentViewModel()
     private fun FeedLoad() = feedLoadTestCases()
 
@@ -56,18 +56,18 @@ class FeedLoadContentTests {
 
     @BeforeEach
     fun beforeEach() {
-        Dispatchers.setMain(mainThreadSurrogate)
+        Dispatchers.setMain(testDispatcher)
     }
 
     @AfterEach
     fun afterEach() {
-        Dispatchers.resetMain() // Reset main dispatcher to the original Main dispatcher.
-        mainThreadSurrogate.close()
+        Dispatchers.resetMain()
+        testDispatcher.cleanupTestCoroutines()
     }
 
     @ParameterizedTest
     @MethodSource("FeedLoad")
-    fun `Feed Load`(test: FeedLoadContentTest) = runBlocking {
+    fun `Feed Load`(test: FeedLoadContentTest) = testDispatcher.runBlockingTest {
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
             contentViewModel.processEvent(event)
@@ -79,7 +79,7 @@ class FeedLoadContentTests {
 
     @ParameterizedTest
     @MethodSource("FeedLoad")
-    fun `Swipe-to-Refresh`(test: FeedLoadContentTest) = runBlockingTest {
+    fun `Swipe-to-Refresh`(test: FeedLoadContentTest) = testDispatcher.runBlockingTest {
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
             contentViewModel.processEvent(event)
@@ -121,7 +121,7 @@ class FeedLoadContentTests {
         // Coinverse
 
         // ContentRepository
-        coEvery { getMainFeedList(any(), test.isRealtime, any()) } returns mockGetMainFeedList(
+        coEvery { getMainFeedList(contentViewModel.viewModelScope, test.isRealtime, any()) } returns mockGetMainFeedList(
                 test.mockFeedList, test.lceState)
         every { queryMainContentList(any()) } returns mockQueryMainContentList(test.mockFeedList)
         every { queryLabeledContentList(test.feedType) } returns mockQueryMainContentList(
@@ -187,7 +187,7 @@ class FeedLoadContentTests {
         coVerify {
             when (test.feedType) {
                 MAIN -> {
-                    getMainFeedList(any(), test.isRealtime, any())
+                    getMainFeedList(contentViewModel.viewModelScope, test.isRealtime, any())
                     if (test.lceState == LOADING || test.lceState == ERROR) queryMainContentList(any())
                 }
                 SAVED, DISMISSED -> queryLabeledContentList(test.feedType)

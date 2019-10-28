@@ -49,7 +49,6 @@ class ContentViewModel : ViewModel() {
         when (event) {
             is FeedLoad -> {
                 // TODO - Remove
-                //viewModelScope.launch {
                 println("FIX_TEST processEvent EVENT ${event}")
                 _feedViewState.value = FeedViewState(
                             feedType = event.feedType,
@@ -57,7 +56,6 @@ class ContentViewModel : ViewModel() {
                             toolbar = setToolbar(event.feedType),
                             contentList = getContentList(event, event.feedType, event.isRealtime,
                                     getTimeframe(event.timeframe)))
-                //}
                 _viewEffect.value = ContentEffects(updateAds = liveData {
                     emit(Event(UpdateAdsEffect()))
                 })
@@ -65,9 +63,8 @@ class ContentViewModel : ViewModel() {
             is FeedLoadComplete -> _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
             is AudioPlayerLoad -> _playerViewState.value = PlayerViewState(
                     getAudioPlayer(event.contentId, event.filePath, event.previewImageUrl))
-            is SwipeToRefresh ->
+            is SwipeToRefresh -> {
                 // TODO - Remove
-                /*viewModelScope.launch*/ {
                 println("FIX_TEST processEvent EVENT ${event}")
                 _feedViewState.value = _feedViewState.value?.copy(contentList = getContentList(
                         event = event,

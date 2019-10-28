@@ -1,5 +1,6 @@
 package app.coinverse.contentviewmodel.tests
 
+import androidx.lifecycle.viewModelScope
 import app.coinverse.analytics.Analytics
 import app.coinverse.analytics.Analytics.labelContentFirebaseAnalytics
 import app.coinverse.analytics.Analytics.updateActionAnalytics
@@ -157,7 +158,7 @@ class LabelContentTests {
         coEvery { getMainFeedList(any(), test.isRealtime, any()) } returns mockGetMainFeedList(
                 test.mockFeedList, CONTENT)
         every {
-            editContentLabels(any(), test.feedType, test.actionType, test.mockContent,
+            editContentLabels(contentViewModel.viewModelScope, test.feedType, test.actionType, test.mockContent,
                     any(), test.adapterPosition)
         } returns mockEditContentLabels(test)
         every { labelContentFirebaseAnalytics(test.mockContent) } returns mockk(relaxed = true)
@@ -176,8 +177,8 @@ class LabelContentTests {
     private fun verifyTests(test: LabelContentTest) {
         coVerify {
             if (test.isUserSignedIn) {
-                editContentLabels(any(), test.feedType, test.actionType, test.mockContent,
-                        any(), test.adapterPosition)
+                editContentLabels(contentViewModel.viewModelScope, test.feedType, test.actionType,
+                        test.mockContent, any(), test.adapterPosition)
             }
             when (test.feedType) {
                 MAIN -> getMainFeedList(any(), test.isRealtime, any())

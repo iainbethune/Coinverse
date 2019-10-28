@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runBlockingTest
 import kotlinx.coroutines.test.setMain
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterAll
@@ -78,16 +79,19 @@ class FeedLoadContentTests {
 
     @ParameterizedTest
     @MethodSource("FeedLoad")
-    fun `Swipe-to-Refresh`(test: FeedLoadContentTest) = runBlocking {
+    fun `Swipe-to-Refresh`(test: FeedLoadContentTest) = runBlockingTest {
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
             contentViewModel.processEvent(event)
+            // TODO - Remove
+            assertContentList(test, event)
         }
         SwipeToRefresh(test.feedType, test.timeframe, false).also { event ->
             contentViewModel.processEvent(event)
             assertContentList(test, event)
             contentViewModel.feedViewState().contentList.getOrAwaitValue().also { pagedList ->
                 assertThat(pagedList).isEqualTo(test.mockFeedList)
+                println("FIX_TEXT Observe contentList ${event}")
                 if (test.feedType == MAIN)
                     when (test.lceState) {
                         LOADING -> contentViewModel.viewEffects()
@@ -117,8 +121,8 @@ class FeedLoadContentTests {
         // Coinverse
 
         // ContentRepository
-        coEvery { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(test.mockFeedList,
-                test.lceState)
+        coEvery { getMainFeedList(any(), test.isRealtime, any()) } returns mockGetMainFeedList(
+                test.mockFeedList, test.lceState)
         every { queryMainContentList(any()) } returns mockQueryMainContentList(test.mockFeedList)
         every { queryLabeledContentList(test.feedType) } returns mockQueryMainContentList(
                 test.mockFeedList)
@@ -151,18 +155,26 @@ class FeedLoadContentTests {
 
     private fun assertContentList(test: FeedLoadContentTest, event: ContentViewEvents) {
         contentViewModel.feedViewState().contentList.getOrAwaitValue().also { pagedList ->
+            println("FIX_TEST assertContentList ACTUAL: ${pagedList} EXPECTED: ${test.mockFeedList}")
             assertThat(pagedList).isEqualTo(test.mockFeedList)
             assertThat(contentViewModel.feedViewState().timeframe).isEqualTo(test.timeframe)
             contentViewModel.viewEffects().updateAds.observe().also { effect ->
                 assertThat(effect.javaClass).isEqualTo(UpdateAdsEffect::class.java)
             }
-            if (test.feedType == MAIN && test.lceState == ERROR)
+            if (test.feedType == MAIN && test.lceState == ERROR) {
+                //contentViewModel.viewEffects().snackBar.observe()
                 contentViewModel.viewEffects().snackBar.observe().also { effect ->
                     assertThat(effect).isEqualTo(SnackBarEffect(
-                            if (event is FeedLoad) MOCK_CONTENT_REQUEST_NETWORK_ERROR
-                            else MOCK_CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
+                            if (event is FeedLoad) {
+                                println("FIX_TEST assertContentList EXPECT FeedLoad: ${event} ${MOCK_CONTENT_REQUEST_NETWORK_ERROR}")
+                                MOCK_CONTENT_REQUEST_NETWORK_ERROR
+                            } else {
+                                println("FIX_TEST assertContentList EXPECT SwipeToRefresh ${event} ${MOCK_CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR}")
+                                MOCK_CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR
+                            }))
 
                 }
+            }
             // ScreenEmptyEffect
             contentViewModel.processEvent(FeedLoadComplete(hasContent = pagedList.isNotEmpty()))
             contentViewModel.viewEffects().screenEmpty.observe().also { effect ->
@@ -175,7 +187,7 @@ class FeedLoadContentTests {
         coVerify {
             when (test.feedType) {
                 MAIN -> {
-                    getMainFeedList(test.isRealtime, any())
+                    getMainFeedList(any(), test.isRealtime, any())
                     if (test.lceState == LOADING || test.lceState == ERROR) queryMainContentList(any())
                 }
                 SAVED, DISMISSED -> queryLabeledContentList(test.feedType)

@@ -10,6 +10,7 @@ import app.coinverse.R.string.*
 import app.coinverse.analytics.Analytics.labelContentFirebaseAnalytics
 import app.coinverse.analytics.Analytics.updateActionAnalytics
 import app.coinverse.analytics.Analytics.updateFeedEmptiedActionsAndAnalytics
+import app.coinverse.content.ContentRepository.bitmapToByteArray
 import app.coinverse.content.ContentRepository.editContentLabels
 import app.coinverse.content.ContentRepository.getAudiocast
 import app.coinverse.content.ContentRepository.getContent
@@ -31,7 +32,6 @@ import app.coinverse.utils.models.Lce.Loading
 import app.coinverse.utils.models.ToolbarState
 import com.crashlytics.android.Crashlytics
 import com.google.firebase.Timestamp
-import kotlinx.coroutines.launch
 
 class ContentViewModel : ViewModel() {
     //TODO: Add isRealtime Boolean for paid feature.
@@ -48,14 +48,16 @@ class ContentViewModel : ViewModel() {
     fun processEvent(event: ContentViewEvents) {
         when (event) {
             is FeedLoad -> {
-                viewModelScope.launch {
-                    _feedViewState.value = FeedViewState(
+                // TODO - Remove
+                //viewModelScope.launch {
+                println("FIX_TEST processEvent EVENT ${event}")
+                _feedViewState.value = FeedViewState(
                             feedType = event.feedType,
                             timeframe = event.timeframe,
                             toolbar = setToolbar(event.feedType),
                             contentList = getContentList(event, event.feedType, event.isRealtime,
                                     getTimeframe(event.timeframe)))
-                }
+                //}
                 _viewEffect.value = ContentEffects(updateAds = liveData {
                     emit(Event(UpdateAdsEffect()))
                 })
@@ -63,7 +65,10 @@ class ContentViewModel : ViewModel() {
             is FeedLoadComplete -> _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
             is AudioPlayerLoad -> _playerViewState.value = PlayerViewState(
                     getAudioPlayer(event.contentId, event.filePath, event.previewImageUrl))
-            is SwipeToRefresh -> viewModelScope.launch {
+            is SwipeToRefresh ->
+                // TODO - Remove
+                /*viewModelScope.launch*/ {
+                println("FIX_TEST processEvent EVENT ${event}")
                 _feedViewState.value = _feedViewState.value?.copy(contentList = getContentList(
                         event = event,
                         feedType = event.feedType,
@@ -176,19 +181,22 @@ class ContentViewModel : ViewModel() {
             }
     )
 
-    suspend private fun getContentList(event: ContentViewEvents, feedType: FeedType, isRealtime: Boolean,
-                                       timeframe: Timestamp) =
-            if (feedType == MAIN)
+    private fun getContentList(event: ContentViewEvents, feedType: FeedType,
+                               isRealtime: Boolean, timeframe: Timestamp) =
+            if (feedType == MAIN) {
+                //println("FIX_TEST getContentList SWITCH EVENT ${event}")
                 switchMap(getMainFeedList(viewModelScope, isRealtime, timeframe)) { lce ->
                     when (lce) {
                         is Loading -> {
                             if (event is SwipeToRefresh)
                                 _viewEffect.send(SwipeToRefreshEffect(true))
+                            println("FIX_TEST getContentList EVENT: ${event}")
                             queryMainContentList(timeframe)
                         }
                         is Lce.Content -> {
                             if (event is SwipeToRefresh)
                                 _viewEffect.send(SwipeToRefreshEffect(false))
+                            println("FIX_TEST getContentList EVENT: ${event} ${lce.packet.pagedList?.value}")
                             lce.packet.pagedList!!
                         }
                         is Error -> {
@@ -198,11 +206,14 @@ class ContentViewModel : ViewModel() {
                             _viewEffect.send(SnackBarEffect(
                                     if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
                                     else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
+                            println("FIX_TEST getContentList EVENT ${event} ${
+                            if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
+                            else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR}")
                             queryMainContentList(timeframe)
                         }
                     }
                 }
-            else switchMap(queryLabeledContentList(feedType)) { pagedList ->
+            } else switchMap(queryLabeledContentList(feedType)) { pagedList ->
                 _viewEffect.send(ScreenEmptyEffect(pagedList.isEmpty()))
                 liveData { emit(pagedList) }
             }
@@ -283,18 +294,18 @@ class ContentViewModel : ViewModel() {
      */
     private fun bitmapToByteArray(url: String) =
             switchMap(ContentRepository.bitmapToByteArray(url)) { lce ->
-            liveData {
-                when (lce) {
-                    is Lce.Content -> emit(Event(ContentBitmap(
-                            lce.packet.image, lce.packet.errorMessage)))
-                    is Error -> {
-                        Crashlytics.log(Log.WARN, LOG_TAG,
-                                "bitmapToByteArray error or null - " +
-                                        "${lce.packet.errorMessage}")
-                        emit(Event(ContentBitmap(lce.packet.image, lce.packet.errorMessage)))
+                liveData {
+                    when (lce) {
+                        is Lce.Content -> emit(Event(ContentBitmap(
+                                lce.packet.image, lce.packet.errorMessage)))
+                        is Error -> {
+                            Crashlytics.log(Log.WARN, LOG_TAG,
+                                    "bitmapToByteArray error or null - " +
+                                            "${lce.packet.errorMessage}")
+                            emit(Event(ContentBitmap(lce.packet.image, lce.packet.errorMessage)))
+                        }
                     }
                 }
-            }
             }
 
     /**

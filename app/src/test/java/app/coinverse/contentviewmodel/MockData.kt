@@ -18,8 +18,8 @@ import app.coinverse.utils.models.Lce.Loading
 // Constants
 const val UI_THREAD = "UI thread"
 const val CONSTANTS_CLASS_COMPILED_JAVA = "app.coinverse.utils.ConstantsKt"
-const val MOCK_CONTENT_REQUEST_NETWORK_ERROR = "Unable to update feed. Swipe to refresh to try again!"
-const val MOCK_CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR = "Unable to update feed. Please try again later!"
+const val MOCK_CONTENT_REQUEST_NETWORK_ERROR = "Unable to update feed. Please try again later!"
+const val MOCK_CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR = "Unable to update feed. Swipe to refresh to try again!"
 const val MOCK_GET_MAIN_FEED_LIST_ERROR = "Unit test getEffect PagedList result error."
 const val MOCK_TXT_FILE_PATH = "mock/sample/textFile.txt"
 const val MOCK_PREVIEW_IMAGE = "mockPreviewImage.jpg"
@@ -39,16 +39,24 @@ val mockDbContentListForDay = listOf(Content(id = "1"), Content(id = "2"),
 val mockDbContentListForAll = listOf(Content(id = "1"), Content(id = "2"),
         Content(id = "3"), Content(id = "4"), Content(id = "5"), Content(id = "6"))
 
+// TODO - Test liveData coroutine builder
+
 fun mockGetMainFeedList(mockFeedList: List<Content>, lceState: LCE_STATE) =
         MutableLiveData<Lce<PagedListResult>>().also { lce ->
             when (lceState) {
                 LOADING -> lce.value = Loading()
-                CONTENT -> lce.value = Lce.Content(PagedListResult(
-                        pagedList = mockQueryMainContentList(mockFeedList),
-                        errorMessage = ""))
-                ERROR -> lce.value = Error(PagedListResult(
-                        pagedList = null,
-                        errorMessage = MOCK_GET_MAIN_FEED_LIST_ERROR))
+                CONTENT -> {
+                    lce.value = Lce.Content(PagedListResult(null, ""))
+                    lce.value = Lce.Content(PagedListResult(
+                            pagedList = mockQueryMainContentList(mockFeedList),
+                            errorMessage = ""))
+                }
+                ERROR -> {
+                    println("FIX_TEST mockGetMainFeedList ${MOCK_GET_MAIN_FEED_LIST_ERROR}")
+                    lce.value = Error(PagedListResult(
+                            pagedList = null,
+                            errorMessage = MOCK_GET_MAIN_FEED_LIST_ERROR))
+                }
             }
         }
 

@@ -108,7 +108,7 @@ class PlayContentTests {
         // Coinverse
 
         // ContentRepository
-        coEvery { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(
+        coEvery { getMainFeedList(any(), test.isRealtime, any()) } returns mockGetMainFeedList(
                 test.mockFeedList, CONTENT)
         every {
             queryLabeledContentList(test.feedType)
@@ -239,13 +239,13 @@ class PlayContentTests {
     private fun verifyTests(test: PlayContentTest) {
         coVerify {
             when (test.feedType) {
-                MAIN -> getMainFeedList(test.isRealtime, any())
+                MAIN -> getMainFeedList(any(), test.isRealtime, any())
                 SAVED, DISMISSED -> queryLabeledContentList(test.feedType)
             }
             if (test.mockContent.contentType == ARTICLE) {
                 getAudiocast(ContentSelected(test.mockPosition, test.mockContent))
                 getContentUri(test.mockContent.id, test.mockFilePath)
-                if (test.lceState != LOADING) bitmapToByteArray(test.mockPreviewImageUrl)
+                bitmapToByteArray(test.mockPreviewImageUrl)
             }
         }
         confirmVerified(ContentRepository)

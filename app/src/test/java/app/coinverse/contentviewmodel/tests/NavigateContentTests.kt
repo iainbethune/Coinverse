@@ -86,7 +86,7 @@ class NavigateContentTests {
 
     private fun mockComponents(test: NavigateContentTest) {
         // Coinverse - ContentRepository
-        coEvery { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(
+        coEvery { getMainFeedList(any(), test.isRealtime, any()) } returns mockGetMainFeedList(
                 test.mockFeedList, CONTENT)
         every {
             queryLabeledContentList(test.feedType)
@@ -97,7 +97,7 @@ class NavigateContentTests {
     private fun verifyTests(test: NavigateContentTest) {
         coVerify {
             when (test.feedType) {
-                MAIN -> getMainFeedList(test.isRealtime, any())
+                MAIN -> getMainFeedList(any(), test.isRealtime, any())
                 SAVED, DISMISSED -> queryLabeledContentList(test.feedType)
             }
         }

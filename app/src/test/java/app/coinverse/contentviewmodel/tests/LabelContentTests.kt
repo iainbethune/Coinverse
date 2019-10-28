@@ -154,10 +154,10 @@ class LabelContentTests {
         // Coinverse
 
         // ContentRepository
-        coEvery { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(
+        coEvery { getMainFeedList(any(), test.isRealtime, any()) } returns mockGetMainFeedList(
                 test.mockFeedList, CONTENT)
         every {
-            editContentLabels(test.feedType, test.actionType, test.mockContent,
+            editContentLabels(any(), test.feedType, test.actionType, test.mockContent,
                     any(), test.adapterPosition)
         } returns mockEditContentLabels(test)
         every { labelContentFirebaseAnalytics(test.mockContent) } returns mockk(relaxed = true)
@@ -176,11 +176,11 @@ class LabelContentTests {
     private fun verifyTests(test: LabelContentTest) {
         coVerify {
             if (test.isUserSignedIn) {
-                editContentLabels(test.feedType, test.actionType, test.mockContent,
+                editContentLabels(any(), test.feedType, test.actionType, test.mockContent,
                         any(), test.adapterPosition)
             }
             when (test.feedType) {
-                MAIN -> getMainFeedList(test.isRealtime, any())
+                MAIN -> getMainFeedList(any(), test.isRealtime, any())
                 SAVED, DISMISSED -> queryLabeledContentList(test.feedType)
             }
         }

@@ -35,7 +35,7 @@ class FeedLoadContentTests {
     companion object {
         @JvmField
         @RegisterExtension
-        val mainCoroutineExtension = MainCoroutineExtension()
+        val coroutineExtension = MainCoroutineExtension()
     }
 
     private val contentViewModel = ContentViewModel()
@@ -58,7 +58,7 @@ class FeedLoadContentTests {
     @ParameterizedTest
     @MethodSource("FeedLoad")
     fun `Feed Load`(test: FeedLoadContentTest) =
-            mainCoroutineExtension.testDispatcher.runBlockingTest {
+            coroutineExtension.testDispatcher.runBlockingTest {
                 mockComponents(test)
                 FeedLoad(test.feedType, test.timeframe, false).also { event ->
                     contentViewModel.processEvent(event)
@@ -71,7 +71,7 @@ class FeedLoadContentTests {
     @ParameterizedTest
     @MethodSource("FeedLoad")
     fun `Swipe-to-Refresh`(test: FeedLoadContentTest) =
-            mainCoroutineExtension.testDispatcher.runBlockingTest {
+            coroutineExtension.testDispatcher.runBlockingTest {
                 mockComponents(test)
                 FeedLoad(test.feedType, test.timeframe, false).also { event ->
                     contentViewModel.processEvent(event)

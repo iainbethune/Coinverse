@@ -21,23 +21,24 @@ import com.crashlytics.android.Crashlytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import io.mockk.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.newSingleThreadContext
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.runBlockingTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
 @ExtendWith(InstantExecutorExtension::class)
 class LabelContentTests {
-    private val mainThreadSurrogate = newSingleThreadContext(UI_THREAD)
+
+    companion object {
+        @JvmField
+        @RegisterExtension
+        val coroutineExtension = MainCoroutineExtension()
+    }
+
     private val contentViewModel = ContentViewModel()
 
     private fun LabelContent() = labelContentTestCases()
@@ -60,34 +61,24 @@ class LabelContentTests {
         unmockkAll() // Re-assigns transformation of object to original state prior to mock.
     }
 
-    @BeforeEach
-    fun beforeEach() {
-        Dispatchers.setMain(mainThreadSurrogate)
-    }
-
-    @AfterEach
-    fun afterEach() {
-        Dispatchers.resetMain() // Reset main dispatcher to the original Main dispatcher.
-        mainThreadSurrogate.close()
-    }
-
     @ParameterizedTest
     @MethodSource("LabelContent")
-    fun `Label Content`(test: LabelContentTest) = runBlocking {
-        mockComponents(test)
-        FeedLoad(test.feedType, test.timeframe, false).also { event ->
-            contentViewModel.processEvent(event)
-        }
-        ContentSwipeDrawed(test.isDrawed).also { event ->
-            contentViewModel.processEvent(event)
-            assertEnableSwipeToRefresh()
-        }
-        ContentSwiped(test.feedType, test.actionType, test.adapterPosition).also { event ->
-            contentViewModel.processEvent(event)
-            assertContentLabeled(test)
-        }
-        verifyTests(test)
-    }
+    fun `Label Content`(test: LabelContentTest) =
+            coroutineExtension.testDispatcher.runBlockingTest {
+                mockComponents(test)
+                FeedLoad(test.feedType, test.timeframe, false).also { event ->
+                    contentViewModel.processEvent(event)
+                }
+                ContentSwipeDrawed(test.isDrawed).also { event ->
+                    contentViewModel.processEvent(event)
+                    assertEnableSwipeToRefresh()
+                }
+                ContentSwiped(test.feedType, test.actionType, test.adapterPosition).also { event ->
+                    contentViewModel.processEvent(event)
+                    assertContentLabeled(test)
+                }
+                verifyTests(test)
+            }
 
     private fun assertEnableSwipeToRefresh() {
         HomeViewModel().apply {

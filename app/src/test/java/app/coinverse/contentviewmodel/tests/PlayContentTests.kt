@@ -37,7 +37,6 @@ import org.junit.jupiter.params.provider.MethodSource
 class PlayContentTests {
 
     companion object {
-
         @JvmField
         @RegisterExtension
         val lifecycleExtension = LifecycleExtension(ContentRepository)

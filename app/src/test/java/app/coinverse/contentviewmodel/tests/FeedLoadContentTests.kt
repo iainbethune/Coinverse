@@ -83,22 +83,7 @@ class FeedLoadContentTests {
                     assertContentList(test, event)
                     contentViewModel.feedViewState().contentList.getOrAwaitValue().also { pagedList ->
                         assertThat(pagedList).isEqualTo(test.mockFeedList)
-                        println("FIX_TEXT Observe contentList ${event}")
-                        if (test.feedType == MAIN)
-                            when (test.lceState) {
-                                LOADING -> contentViewModel.viewEffects()
-                                        .swipeToRefresh.observe().also { effect ->
-                                    assertThat(effect).isEqualTo(SwipeToRefreshEffect(true))
-                                }
-                                CONTENT -> contentViewModel.viewEffects()
-                                        .swipeToRefresh.observe().also { effect ->
-                                    assertThat(effect).isEqualTo(SwipeToRefreshEffect(false))
-                                }
-                                ERROR -> contentViewModel.viewEffects()
-                                        .swipeToRefresh.observe().also { effect ->
-                                    assertThat(effect).isEqualTo(SwipeToRefreshEffect(false))
-                                }
-                            }
+                        if (test.feedType == MAIN) assertSwipeToRefresh(test)
                     }
                 }
                 verifyTests(test)
@@ -147,30 +132,39 @@ class FeedLoadContentTests {
 
     private fun assertContentList(test: FeedLoadContentTest, event: ContentViewEvents) {
         contentViewModel.feedViewState().contentList.getOrAwaitValue().also { pagedList ->
-            println("FIX_TEST assertContentList ACTUAL: ${pagedList} EXPECTED: ${test.mockFeedList}")
             assertThat(pagedList).isEqualTo(test.mockFeedList)
             assertThat(contentViewModel.feedViewState().timeframe).isEqualTo(test.timeframe)
             contentViewModel.viewEffects().updateAds.observe().also { effect ->
                 assertThat(effect.javaClass).isEqualTo(UpdateAdsEffect::class.java)
             }
             if (test.feedType == MAIN && test.lceState == ERROR) {
-                //contentViewModel.viewEffects().snackBar.observe()
                 contentViewModel.viewEffects().snackBar.observe().also { effect ->
                     assertThat(effect).isEqualTo(SnackBarEffect(
-                            if (event is FeedLoad) {
-                                println("FIX_TEST assertContentList EXPECT FeedLoad: ${event} ${MOCK_CONTENT_REQUEST_NETWORK_ERROR}")
-                                MOCK_CONTENT_REQUEST_NETWORK_ERROR
-                            } else {
-                                println("FIX_TEST assertContentList EXPECT SwipeToRefresh ${event} ${MOCK_CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR}")
-                                MOCK_CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR
-                            }))
-
+                            if (event is FeedLoad) MOCK_CONTENT_REQUEST_NETWORK_ERROR
+                            else MOCK_CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
                 }
             }
             // ScreenEmptyEffect
             contentViewModel.processEvent(FeedLoadComplete(hasContent = pagedList.isNotEmpty()))
             contentViewModel.viewEffects().screenEmpty.observe().also { effect ->
                 assertThat(effect).isEqualTo(ScreenEmptyEffect(pagedList.isEmpty()))
+            }
+        }
+    }
+
+    private fun assertSwipeToRefresh(test: FeedLoadContentTest) {
+        when (test.lceState) {
+            LOADING -> contentViewModel.viewEffects()
+                    .swipeToRefresh.observe().also { effect ->
+                assertThat(effect).isEqualTo(SwipeToRefreshEffect(true))
+            }
+            CONTENT -> contentViewModel.viewEffects()
+                    .swipeToRefresh.observe().also { effect ->
+                assertThat(effect).isEqualTo(SwipeToRefreshEffect(false))
+            }
+            ERROR -> contentViewModel.viewEffects()
+                    .swipeToRefresh.observe().also { effect ->
+                assertThat(effect).isEqualTo(SwipeToRefreshEffect(false))
             }
         }
     }

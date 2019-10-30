@@ -30,13 +30,13 @@ import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
-@ExtendWith(InstantExecutorExtension::class)
+@ExtendWith(LiveDataExecutorExtension::class)
 class LabelContentTests {
 
     companion object {
         @JvmField
         @RegisterExtension
-        val coroutineExtension = MainCoroutineExtension()
+        val coroutineExtension = CoroutineExtension()
     }
 
     private val contentViewModel = ContentViewModel()

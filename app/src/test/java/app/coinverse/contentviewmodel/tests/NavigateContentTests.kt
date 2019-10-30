@@ -9,27 +9,30 @@ import app.coinverse.content.models.ContentEffectType.OpenContentSourceIntentEff
 import app.coinverse.content.models.ContentEffectType.UpdateAdsEffect
 import app.coinverse.content.models.ContentViewEvents.*
 import app.coinverse.contentviewmodel.*
+import app.coinverse.utils.CoroutineExtension
 import app.coinverse.utils.FeedType.*
-import app.coinverse.utils.InstantExecutorExtension
 import app.coinverse.utils.LCE_STATE.CONTENT
+import app.coinverse.utils.LiveDataExecutorExtension
 import app.coinverse.utils.observe
 import app.coinverse.utils.viewEffects
 import io.mockk.*
+import kotlinx.coroutines.test.runBlockingTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
-@ExtendWith(InstantExecutorExtension::class)
+@ExtendWith(LiveDataExecutorExtension::class)
 class NavigateContentTests {
-    // TODO - Add rules for beforeAll, afterAll
-    /*companion object {
+
+    companion object {
         @JvmField
         @RegisterExtension
-        val coroutineExtension = MainCoroutineExtension()
-    }*/
+        val coroutineExtension = CoroutineExtension()
+    }
 
     private val contentViewModel = ContentViewModel()
 
@@ -47,7 +50,8 @@ class NavigateContentTests {
 
     @ParameterizedTest
     @MethodSource("NavigateContent")
-    fun `Navigate Content`(test: NavigateContentTest) {
+    fun `Navigate Content`(test: NavigateContentTest) =
+            coroutineExtension.testDispatcher.runBlockingTest {
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
             contentViewModel.processEvent(event)

@@ -27,21 +27,24 @@ import com.crashlytics.android.Crashlytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import io.mockk.*
+import kotlinx.coroutines.test.runBlockingTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
-@ExtendWith(InstantExecutorExtension::class)
+@ExtendWith(LiveDataExecutorExtension::class)
 class PlayContentTests {
+
     // TODO - Add rules for beforeAll, afterAll
-    /*companion object {
+    companion object {
         @JvmField
         @RegisterExtension
-        val coroutineExtension = MainCoroutineExtension()
-    }*/
+        val coroutineExtension = CoroutineExtension()
+    }
 
     private val contentViewModel = ContentViewModel()
 
@@ -67,7 +70,8 @@ class PlayContentTests {
 
     @ParameterizedTest
     @MethodSource("PlayContent")
-    fun `Play Content`(test: PlayContentTest) {
+    fun `Play Content`(test: PlayContentTest) =
+            coroutineExtension.testDispatcher.runBlockingTest {
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
             contentViewModel.processEvent(event)

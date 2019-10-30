@@ -8,7 +8,7 @@ import org.junit.jupiter.api.extension.AfterEachCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 
-class MainCoroutineExtension : BeforeEachCallback, AfterEachCallback {
+class CoroutineExtension : BeforeEachCallback, AfterEachCallback {
     val testDispatcher = TestCoroutineDispatcher()
 
     override fun beforeEach(context: ExtensionContext?) {

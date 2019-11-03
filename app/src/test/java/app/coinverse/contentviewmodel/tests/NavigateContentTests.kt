@@ -1,6 +1,5 @@
 package app.coinverse.contentviewmodel.tests
 
-import app.coinverse.content.ContentRepository
 import app.coinverse.content.ContentRepository.getContent
 import app.coinverse.content.ContentRepository.getMainFeedList
 import app.coinverse.content.ContentRepository.queryLabeledContentList
@@ -11,25 +10,21 @@ import app.coinverse.content.models.ContentViewEvents.*
 import app.coinverse.contentviewmodel.*
 import app.coinverse.utils.FeedType.*
 import app.coinverse.utils.LCE_STATE.CONTENT
-import app.coinverse.utils.LifecycleExtension
+import app.coinverse.utils.LifecycleExtensions
 import app.coinverse.utils.observe
 import app.coinverse.utils.viewEffects
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
+import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.runBlockingTest
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
-class NavigateContentTests {
-
-    companion object {
-        @JvmField
-        @RegisterExtension
-        val lifecycleExtension = LifecycleExtension(ContentRepository)
-    }
+@ExtendWith(LifecycleExtensions::class)
+class NavigateContentTests(val testDispatcher: TestCoroutineDispatcher) {
 
     private val contentViewModel = ContentViewModel()
 
@@ -37,31 +32,30 @@ class NavigateContentTests {
 
     @ParameterizedTest
     @MethodSource("NavigateContent")
-    fun `Navigate Content`(test: NavigateContentTest) =
-            lifecycleExtension.testDispatcher.runBlockingTest {
-                mockComponents(test)
-                FeedLoad(test.feedType, test.timeframe, false).also { event ->
-                    contentViewModel.processEvent(event)
-                }
-                ContentShared(test.mockContent).also { event ->
-                    contentViewModel.processEvent(event)
-                    assertThat(contentViewModel.viewEffects().shareContentIntent.observe()
-                            .contentRequest.observe())
-                            .isEqualTo(test.mockContent)
-                }
-                ContentSourceOpened(test.mockContent.url).also { event ->
-                    contentViewModel.processEvent(event)
-                    assertThat(contentViewModel.viewEffects().openContentSourceIntent.observe())
-                            .isEqualTo(OpenContentSourceIntentEffect(test.mockContent.url))
-                }
-                // Occurs on Fragment 'onViewStateRestored'
-                UpdateAds().also { event ->
-                    contentViewModel.processEvent(event)
-                    assertThat(contentViewModel.viewEffects().updateAds.observe().javaClass)
-                            .isEqualTo(UpdateAdsEffect::class.java)
-                }
-                verifyTests(test)
-            }
+    fun `Navigate Content`(test: NavigateContentTest) = testDispatcher.runBlockingTest {
+        mockComponents(test)
+        FeedLoad(test.feedType, test.timeframe, false).also { event ->
+            contentViewModel.processEvent(event)
+        }
+        ContentShared(test.mockContent).also { event ->
+            contentViewModel.processEvent(event)
+            assertThat(contentViewModel.viewEffects().shareContentIntent.observe()
+                    .contentRequest.observe())
+                    .isEqualTo(test.mockContent)
+        }
+        ContentSourceOpened(test.mockContent.url).also { event ->
+            contentViewModel.processEvent(event)
+            assertThat(contentViewModel.viewEffects().openContentSourceIntent.observe())
+                    .isEqualTo(OpenContentSourceIntentEffect(test.mockContent.url))
+        }
+        // Occurs on Fragment 'onViewStateRestored'
+        UpdateAds().also { event ->
+            contentViewModel.processEvent(event)
+            assertThat(contentViewModel.viewEffects().updateAds.observe().javaClass)
+                    .isEqualTo(UpdateAdsEffect::class.java)
+        }
+        verifyTests(test)
+    }
 
     private fun mockComponents(test: NavigateContentTest) {
         // Coinverse - ContentRepository

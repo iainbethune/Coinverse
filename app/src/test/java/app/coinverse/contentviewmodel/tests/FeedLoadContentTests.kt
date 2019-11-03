@@ -20,20 +20,16 @@ import app.coinverse.utils.models.ToolbarState
 import com.crashlytics.android.Crashlytics
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import io.mockk.*
+import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.runBlockingTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
-class FeedLoadContentTests {
-
-    companion object {
-        @JvmField
-        @RegisterExtension
-        val lifecycleExtension = LifecycleExtension(ContentRepository)
-    }
+@ExtendWith(LifecycleExtensions::class)
+class FeedLoadContentTests(val testDispatcher: TestCoroutineDispatcher) {
 
     private val contentViewModel = ContentViewModel()
     private fun FeedLoad() = feedLoadTestCases()
@@ -47,37 +43,35 @@ class FeedLoadContentTests {
 
     @ParameterizedTest
     @MethodSource("FeedLoad")
-    fun `Feed Load`(test: FeedLoadContentTest) =
-            lifecycleExtension.testDispatcher.runBlockingTest {
-                mockComponents(test)
-                FeedLoad(test.feedType, test.timeframe, false).also { event ->
-                    contentViewModel.processEvent(event)
-                    assertThatToolbarState(test)
-                    assertContentList(test, event)
-                }
-                verifyTests(test)
-            }
+    fun `Feed Load`(test: FeedLoadContentTest) = testDispatcher.runBlockingTest {
+        mockComponents(test)
+        FeedLoad(test.feedType, test.timeframe, false).also { event ->
+            contentViewModel.processEvent(event)
+            assertThatToolbarState(test)
+            assertContentList(test, event)
+        }
+        verifyTests(test)
+    }
 
     @ParameterizedTest
     @MethodSource("FeedLoad")
-    fun `Swipe-to-Refresh`(test: FeedLoadContentTest) =
-            lifecycleExtension.testDispatcher.runBlockingTest {
-                mockComponents(test)
-                FeedLoad(test.feedType, test.timeframe, false).also { event ->
-                    contentViewModel.processEvent(event)
-                    // TODO - Remove
-                    assertContentList(test, event)
-                }
-                SwipeToRefresh(test.feedType, test.timeframe, false).also { event ->
-                    contentViewModel.processEvent(event)
-                    assertContentList(test, event)
-                    contentViewModel.feedViewState().contentList.getOrAwaitValue().also { pagedList ->
-                        assertThat(pagedList).isEqualTo(test.mockFeedList)
-                        if (test.feedType == MAIN) assertSwipeToRefresh(test)
-                    }
-                }
-                verifyTests(test)
+    fun `Swipe-to-Refresh`(test: FeedLoadContentTest) = testDispatcher.runBlockingTest {
+        mockComponents(test)
+        FeedLoad(test.feedType, test.timeframe, false).also { event ->
+            contentViewModel.processEvent(event)
+            // TODO - Remove
+            assertContentList(test, event)
+        }
+        SwipeToRefresh(test.feedType, test.timeframe, false).also { event ->
+            contentViewModel.processEvent(event)
+            assertContentList(test, event)
+            contentViewModel.feedViewState().contentList.getOrAwaitValue().also { pagedList ->
+                assertThat(pagedList).isEqualTo(test.mockFeedList)
+                if (test.feedType == MAIN) assertSwipeToRefresh(test)
             }
+        }
+        verifyTests(test)
+    }
 
     private fun mockComponents(test: FeedLoadContentTest) {
 

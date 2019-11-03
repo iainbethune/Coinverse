@@ -11,20 +11,19 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.extension.*
 
-class LifecycleExtension(val contentRepository: ContentRepository)
-    : BeforeAllCallback, AfterAllCallback, BeforeEachCallback, AfterEachCallback {
+class LifecycleExtensions : BeforeAllCallback, AfterAllCallback, BeforeEachCallback,
+        AfterEachCallback, ParameterResolver {
 
     val testDispatcher = TestCoroutineDispatcher()
 
     override fun beforeAll(context: ExtensionContext?) {
         // Repository is used across all the tests.
-        mockkObject(contentRepository)
+        mockkObject(ContentRepository)
     }
 
     override fun afterAll(context: ExtensionContext?) {
         unmockkAll()
     }
-
 
     override fun beforeEach(context: ExtensionContext?) {
         // Set Coroutine Dispatcher.
@@ -46,4 +45,13 @@ class LifecycleExtension(val contentRepository: ContentRepository)
         // Clear LiveData Executor
         ArchTaskExecutor.getInstance().setDelegate(null)
     }
+
+    override fun supportsParameter(parameterContext: ParameterContext?,
+                                   extensionContext: ExtensionContext?) =
+            parameterContext?.parameter?.type == TestCoroutineDispatcher::class.java
+
+    override fun resolveParameter(parameterContext: ParameterContext?,
+                                  extensionContext: ExtensionContext?) =
+            testDispatcher
+
 }

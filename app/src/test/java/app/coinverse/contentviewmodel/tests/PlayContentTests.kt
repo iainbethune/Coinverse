@@ -27,20 +27,16 @@ import com.crashlytics.android.Crashlytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import io.mockk.*
+import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.runBlockingTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
-class PlayContentTests {
-
-    companion object {
-        @JvmField
-        @RegisterExtension
-        val lifecycleExtension = LifecycleExtension(ContentRepository)
-    }
+@ExtendWith(LifecycleExtensions::class)
+class PlayContentTests(val testDispatcher: TestCoroutineDispatcher) {
 
     private val contentViewModel = ContentViewModel()
 
@@ -57,8 +53,7 @@ class PlayContentTests {
 
     @ParameterizedTest
     @MethodSource("PlayContent")
-    fun `Play Content`(test: PlayContentTest) =
-            lifecycleExtension.testDispatcher.runBlockingTest {
+    fun `Play Content`(test: PlayContentTest) = testDispatcher.runBlockingTest {
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
             contentViewModel.processEvent(event)

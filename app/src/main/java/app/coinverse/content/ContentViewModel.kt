@@ -48,14 +48,12 @@ class ContentViewModel : ViewModel() {
     fun processEvent(event: ContentViewEvents) {
         when (event) {
             is FeedLoad -> {
-                // TODO - Remove
-                println("FIX_TEST processEvent EVENT ${event}")
                 _feedViewState.value = FeedViewState(
-                            feedType = event.feedType,
-                            timeframe = event.timeframe,
-                            toolbar = setToolbar(event.feedType),
-                            contentList = getContentList(event, event.feedType, event.isRealtime,
-                                    getTimeframe(event.timeframe)))
+                        feedType = event.feedType,
+                        timeframe = event.timeframe,
+                        toolbar = setToolbar(event.feedType),
+                        contentList = getContentList(event, event.feedType, event.isRealtime,
+                                getTimeframe(event.timeframe)))
                 _viewEffect.value = ContentEffects(updateAds = liveData {
                     emit(Event(UpdateAdsEffect()))
                 })
@@ -63,15 +61,12 @@ class ContentViewModel : ViewModel() {
             is FeedLoadComplete -> _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
             is AudioPlayerLoad -> _playerViewState.value = PlayerViewState(
                     getAudioPlayer(event.contentId, event.filePath, event.previewImageUrl))
-            is SwipeToRefresh -> {
-                // TODO - Remove
-                println("FIX_TEST processEvent EVENT ${event}")
+            is SwipeToRefresh ->
                 _feedViewState.value = _feedViewState.value?.copy(contentList = getContentList(
                         event = event,
                         feedType = event.feedType,
                         isRealtime = event.isRealtime,
                         timeframe = getTimeframe(event.timeframe)))
-            }
             is ContentSelected -> {
                 val contentSelected = ContentSelected(event.position, event.content)
                 when (contentSelected.content.contentType) {
@@ -181,19 +176,16 @@ class ContentViewModel : ViewModel() {
     private fun getContentList(event: ContentViewEvents, feedType: FeedType,
                                isRealtime: Boolean, timeframe: Timestamp) =
             if (feedType == MAIN) {
-                //println("FIX_TEST getContentList SWITCH EVENT ${event}")
                 switchMap(getMainFeedList(viewModelScope, isRealtime, timeframe)) { lce ->
                     when (lce) {
                         is Loading -> {
                             if (event is SwipeToRefresh)
                                 _viewEffect.send(SwipeToRefreshEffect(true))
-                            println("FIX_TEST getContentList EVENT: ${event}")
                             queryMainContentList(timeframe)
                         }
                         is Lce.Content -> {
                             if (event is SwipeToRefresh)
                                 _viewEffect.send(SwipeToRefreshEffect(false))
-                            println("FIX_TEST getContentList EVENT: ${event} ${lce.packet.pagedList?.value}")
                             lce.packet.pagedList!!
                         }
                         is Error -> {
@@ -203,9 +195,6 @@ class ContentViewModel : ViewModel() {
                             _viewEffect.send(SnackBarEffect(
                                     if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
                                     else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
-                            println("FIX_TEST getContentList EVENT ${event} ${
-                            if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
-                            else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR}")
                             queryMainContentList(timeframe)
                         }
                     }

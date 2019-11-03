@@ -5,32 +5,14 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.liveData
 import androidx.paging.PagedList
 import app.coinverse.content.models.*
+import app.coinverse.utils.*
 import app.coinverse.utils.ContentType.ARTICLE
 import app.coinverse.utils.ContentType.YOUTUBE
-import app.coinverse.utils.LCE_STATE
 import app.coinverse.utils.LCE_STATE.*
-import app.coinverse.utils.asPagedList
 import app.coinverse.utils.livedata.Event
 import app.coinverse.utils.models.Lce
 import app.coinverse.utils.models.Lce.Error
 import app.coinverse.utils.models.Lce.Loading
-
-// Constants
-const val UI_THREAD = "UI thread"
-const val CONSTANTS_CLASS_COMPILED_JAVA = "app.coinverse.utils.ConstantsKt"
-const val MOCK_CONTENT_REQUEST_NETWORK_ERROR = "Unable to update feed. Please try again later!"
-const val MOCK_CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR = "Unable to update feed. Swipe to refresh to try again!"
-const val MOCK_GET_MAIN_FEED_LIST_ERROR = "Unit test getEffect PagedList result error."
-const val MOCK_TXT_FILE_PATH = "mock/sample/textFile.txt"
-const val MOCK_PREVIEW_IMAGE = "mockPreviewImage.jpg"
-const val MOCK_URL = "https://mockUrl.com"
-// Mock Errors
-const val MOCK_TTS_CHAR_LIMIT_ERROR = "TTS_CHAR_LIMIT_ERROR"
-const val MOCK_TTS_CHAR_LIMIT_ERROR_MESSAGE = "Audiocasts for longer content coming soon!"
-const val MOCK_CONTENT_PLAY_ERROR = "Unable to play content. Please try again later."
-const val MOCK_GET_CONTENT_URI_ERROR = "Mock getContentUri error."
-const val MOCK_GET_BITMAP_TO_BYTEARRAY_ERROR = "Mock getBitmapToByteArray error."
-const val MOCK_CONTENT_LABEL_ERROR = "Unable to apply label. Please try again later."
 
 val mockArticleContent = Content(id = "1", contentType = ARTICLE, url = MOCK_URL)
 val mockYouTubeContent = Content(id = "1", contentType = YOUTUBE, url = MOCK_URL)
@@ -51,12 +33,9 @@ fun mockGetMainFeedList(mockFeedList: List<Content>, lceState: LCE_STATE) =
                             pagedList = mockQueryMainContentList(mockFeedList),
                             errorMessage = ""))
                 }
-                ERROR -> {
-                    println("FIX_TEST mockGetMainFeedList ${MOCK_GET_MAIN_FEED_LIST_ERROR}")
-                    lce.value = Error(PagedListResult(
-                            pagedList = null,
-                            errorMessage = MOCK_GET_MAIN_FEED_LIST_ERROR))
-                }
+                ERROR -> lce.value = Error(PagedListResult(
+                        pagedList = null,
+                        errorMessage = MOCK_GET_MAIN_FEED_LIST_ERROR))
             }
         }
 

@@ -14,8 +14,6 @@ import org.junit.jupiter.api.extension.*
 class LifecycleExtensions : BeforeAllCallback, AfterAllCallback, BeforeEachCallback,
         AfterEachCallback, ParameterResolver {
 
-    val testDispatcher = TestCoroutineDispatcher()
-
     override fun beforeAll(context: ExtensionContext?) {
         // Repository is used across all the tests.
         mockkObject(ContentRepository)
@@ -27,7 +25,8 @@ class LifecycleExtensions : BeforeAllCallback, AfterAllCallback, BeforeEachCallb
 
     override fun beforeEach(context: ExtensionContext?) {
         // Set Coroutine Dispatcher.
-        Dispatchers.setMain(testDispatcher)
+        Dispatchers.setMain(context?.getStore(STORE_NAMESPACE)
+                ?.get(STORE_KEY, TestCoroutineDispatcher::class.java)!!)
 
         // Set LiveData Executor.
         ArchTaskExecutor.getInstance().setDelegate(object : TaskExecutor() {
@@ -40,7 +39,8 @@ class LifecycleExtensions : BeforeAllCallback, AfterAllCallback, BeforeEachCallb
     override fun afterEach(context: ExtensionContext?) {
         // Reset Coroutine Dispatcher.
         Dispatchers.resetMain()
-        testDispatcher.cleanupTestCoroutines()
+        context?.getStore(STORE_NAMESPACE)
+                ?.get(STORE_KEY, TestCoroutineDispatcher::class.java)!!.cleanupTestCoroutines()
 
         // Clear LiveData Executor
         ArchTaskExecutor.getInstance().setDelegate(null)
@@ -52,6 +52,7 @@ class LifecycleExtensions : BeforeAllCallback, AfterAllCallback, BeforeEachCallb
 
     override fun resolveParameter(parameterContext: ParameterContext?,
                                   extensionContext: ExtensionContext?) =
-            testDispatcher
-
+            TestCoroutineDispatcher().apply {
+                extensionContext?.getStore(STORE_NAMESPACE)?.put(STORE_KEY, this)
+            }
 }

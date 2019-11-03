@@ -15,10 +15,12 @@ import app.coinverse.utils.livedata.Event
 import com.google.firebase.auth.FirebaseAuth
 import io.mockk.every
 import io.mockk.mockk
+import org.junit.jupiter.api.extension.ExtensionContext
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
+val STORE_NAMESPACE = ExtensionContext.Namespace.create(NAMESPACE_STRING)
 fun LabelContentTest.mockUser() =
         if (this.isUserSignedIn) FirebaseAuth.getInstance().currentUser else null
 

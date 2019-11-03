@@ -1,10 +1,10 @@
 package app.coinverse.contentviewmodel
 
+import app.coinverse.utils.*
 import app.coinverse.utils.FeedType.*
 import app.coinverse.utils.LCE_STATE.*
 import app.coinverse.utils.Timeframe.ALL
 import app.coinverse.utils.Timeframe.DAY
-import app.coinverse.utils.UserActionType
 import java.util.stream.Stream
 
 // TODO - Create multiple files.

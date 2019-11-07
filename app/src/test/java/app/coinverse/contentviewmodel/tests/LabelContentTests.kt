@@ -29,10 +29,9 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
-@ExtendWith(LifecycleExtensions::class)
-class LabelContentTests(val testDispatcher: TestCoroutineDispatcher) {
-
-    private val contentViewModel = ContentViewModel()
+@ExtendWith(ContentTestExtension::class)
+class LabelContentTests(val testDispatcher: TestCoroutineDispatcher,
+                        val contentViewModel: ContentViewModel) {
 
     private fun LabelContent() = labelContentTestCases()
 

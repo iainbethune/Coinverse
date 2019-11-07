@@ -11,12 +11,19 @@ import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.toBitmap
 import androidx.navigation.ui.R.id.snackbar_text
+import androidx.paging.Config
 import app.coinverse.R.color
 import app.coinverse.R.drawable.*
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.google.android.material.snackbar.Snackbar
 
 lateinit var resourcesUtil: Resources
+
+val pagedListConfig = Config(
+        enablePlaceholders = true,
+        prefetchDistance = PREFETCH_DISTANCE,
+        pageSize = PAGE_SIZE
+)
 
 fun convertDpToPx(dp: Int) = Math.round(dp * (resourcesUtil.displayMetrics.xdpi / DisplayMetrics.DENSITY_DEFAULT))
 

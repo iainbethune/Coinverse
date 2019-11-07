@@ -1,7 +1,9 @@
 package app.coinverse.utils
 
-const val NAMESPACE_STRING = "extensionNamespace"
-const val STORE_KEY = 1132019
+const val TEST_COROUTINE_DISPATCHER_NAMESPACE_STRING = "extensionNamespace"
+const val VIEWMODEL_NAMESPACE_STRING = "viewmodelExtensionNamespace"
+const val TEST_COROUTINE_DISPATCHER_KEY = 1132019
+const val CONTENT_VIEWMODEL_KEY = 1162019
 const val CONSTANTS_CLASS_COMPILED_JAVA = "app.coinverse.utils.ConstantsKt"
 const val MOCK_CONTENT_REQUEST_NETWORK_ERROR = "Unable to update feed. Please try again later!"
 const val MOCK_CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR = "Unable to update feed. Swipe to refresh to try again!"

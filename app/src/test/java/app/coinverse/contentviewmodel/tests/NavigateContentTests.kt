@@ -8,9 +8,9 @@ import app.coinverse.content.models.ContentEffectType.OpenContentSourceIntentEff
 import app.coinverse.content.models.ContentEffectType.UpdateAdsEffect
 import app.coinverse.content.models.ContentViewEvents.*
 import app.coinverse.contentviewmodel.*
+import app.coinverse.utils.ContentTestExtension
 import app.coinverse.utils.FeedType.*
 import app.coinverse.utils.LCE_STATE.CONTENT
-import app.coinverse.utils.LifecycleExtensions
 import app.coinverse.utils.observe
 import app.coinverse.utils.viewEffects
 import io.mockk.coEvery
@@ -23,10 +23,9 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
-@ExtendWith(LifecycleExtensions::class)
-class NavigateContentTests(val testDispatcher: TestCoroutineDispatcher) {
-
-    private val contentViewModel = ContentViewModel()
+@ExtendWith(ContentTestExtension::class)
+class NavigateContentTests(val testDispatcher: TestCoroutineDispatcher,
+                           val contentViewModel: ContentViewModel) {
 
     private fun NavigateContent() = navigateContentTestCases()
 

@@ -20,7 +20,11 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-val STORE_NAMESPACE = ExtensionContext.Namespace.create(NAMESPACE_STRING)
+val TEST_COROUTINE_DISPATCHER_NAMESPACE =
+        ExtensionContext.Namespace.create(TEST_COROUTINE_DISPATCHER_NAMESPACE_STRING)
+val VIEWMODEL_NAMESPACE =
+        ExtensionContext.Namespace.create(VIEWMODEL_NAMESPACE_STRING)
+
 fun LabelContentTest.mockUser() =
         if (this.isUserSignedIn) FirebaseAuth.getInstance().currentUser else null
 
@@ -74,6 +78,7 @@ fun <T> LiveData<T>.observeForTesting(block: () -> Unit) {
 }
 
 // Mock PagedList.
+// TODO - Refactor
 fun <T> List<T>.asPagedList(config: PagedList.Config? = null) =
         LivePagedListBuilder<Int, T>(createMockDataSourceFactory(this),
                 config ?: PagedList.Config.Builder()

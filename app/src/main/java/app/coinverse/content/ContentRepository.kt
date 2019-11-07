@@ -8,9 +8,7 @@ import androidx.lifecycle.LiveDataScope
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
 import androidx.lifecycle.liveData
-import androidx.paging.DataSource
-import androidx.paging.LivePagedListBuilder
-import androidx.paging.PagedList
+import androidx.paging.toLiveData
 import app.coinverse.BuildConfig.BUILD_TYPE
 import app.coinverse.analytics.models.ContentAction
 import app.coinverse.content.models.*
@@ -65,17 +63,15 @@ object ContentRepository {
                                                 "${error.localizedMessage}"
                                         return@EventListener
                                     }
-                                    ArrayList<Content?>().also { contentList ->
-                                        value!!.documentChanges.all { document ->
-                                            document.document.toObject(Content::class.java)
-                                                    .let { savedContent ->
-                                                        contentList.add(savedContent)
-                                                        labeledSet.add(savedContent.id)
-                                                    }
-                                            true
-                                        }
-                                        insertContentListToDb(scope, contentList)
+                                    val contentList = ArrayList<Content?>()
+                                    value!!.documentChanges.map { document ->
+                                        document.document.toObject(Content::class.java)
+                                                .let { savedContent ->
+                                                    contentList.add(savedContent)
+                                                    labeledSet.add(savedContent.id)
+                                                }
                                     }
+                                    insertContentListToDb(scope, contentList)
                                 })
                         // Get dismiss_collection.
                         user.document(COLLECTIONS_DOCUMENT)
@@ -87,17 +83,15 @@ object ContentRepository {
                                         errorMessage = "Error retrieving user dismiss_collection: ${error.localizedMessage}"
                                         return@EventListener
                                     }
-                                    ArrayList<Content?>().also { contentList ->
-                                        value!!.documentChanges.all { document ->
-                                            document.document.toObject(Content::class.java)
-                                                    .let { dismissedContent ->
-                                                        contentList.add(dismissedContent)
-                                                        labeledSet.add(dismissedContent.id)
-                                                    }
-                                            true
-                                        }
-                                        insertContentListToDb(scope, contentList)
+                                    val contentList = ArrayList<Content?>()
+                                    value!!.documentChanges.map { document ->
+                                        document.document.toObject(Content::class.java)
+                                                .let { dismissedContent ->
+                                                    contentList.add(dismissedContent)
+                                                    labeledSet.add(dismissedContent.id)
+                                                }
                                     }
+                                    insertContentListToDb(scope, contentList)
                                 })
                         if (errorMessage.isNotEmpty())
                             lce.emit(Error(PagedListResult(null, errorMessage)))
@@ -118,6 +112,7 @@ object ContentRepository {
                                         return@EventListener
                                     }
                                     arrayListOf<Content?>().also { contentList ->
+                                        // TODO - Refactor 'all' to 'map'
                                         value!!.documentChanges.all { document ->
                                             document.document.toObject(Content::class.java).also { content ->
                                                 if (!labeledSet.contains(content.id))
@@ -182,10 +177,11 @@ object ContentRepository {
             }
 
     fun queryMainContentList(timestamp: Timestamp) =
-            liveDataBuilder(database.contentDao().queryMainContentList(timestamp, MAIN))
+            database.contentDao().queryMainContentList(timestamp, MAIN).toLiveData(pagedListConfig)
+
 
     fun queryLabeledContentList(feedType: FeedType) =
-            liveDataBuilder(database.contentDao().queryLabeledContentList(feedType))
+            database.contentDao().queryLabeledContentList(feedType).toLiveData(pagedListConfig)
 
     fun getAudiocast(contentSelected: ContentSelected) =
             MutableLiveData<Lce<ContentToPlay>>().apply {
@@ -370,14 +366,6 @@ object ContentRepository {
                     }
             }
 
-    private fun liveDataBuilder(dataSource: DataSource.Factory<Int, Content>) =
-            LivePagedListBuilder(dataSource,
-                    PagedList.Config.Builder().setEnablePlaceholders(true)
-                            .setPrefetchDistance(PREFETCH_DISTANCE)
-                            .setPageSize(PAGE_SIZE)
-                            .build())
-                    .build()
-
     private fun addContentLabel(scope: CoroutineScope, actionType: UserActionType,
                                 userCollection: CollectionReference,
                                 content: Content?, position: Int) =
@@ -401,7 +389,6 @@ object ContentRepository {
                                     "'${content.title}' failed to be added to collection $collection"))
                         }
             }
-
 
     private fun removeContentLabel(userReference: CollectionReference, collection: String,
                                    content: Content?, position: Int) =

@@ -12,7 +12,10 @@ import app.coinverse.content.ContentViewModel
 import app.coinverse.content.models.ContentEffectType.*
 import app.coinverse.content.models.ContentViewEvents
 import app.coinverse.content.models.ContentViewEvents.*
-import app.coinverse.contentviewmodel.*
+import app.coinverse.contentviewmodel.FeedLoadContentTest
+import app.coinverse.contentviewmodel.feedLoadTestCases
+import app.coinverse.contentviewmodel.mockGetMainFeedList
+import app.coinverse.contentviewmodel.mockQueryMainContentList
 import app.coinverse.utils.*
 import app.coinverse.utils.FeedType.*
 import app.coinverse.utils.LCE_STATE.*
@@ -28,10 +31,10 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
-@ExtendWith(LifecycleExtensions::class)
-class FeedLoadContentTests(val testDispatcher: TestCoroutineDispatcher) {
+@ExtendWith(ContentTestExtension::class)
+class FeedLoadContentTests(val testDispatcher: TestCoroutineDispatcher,
+                           val contentViewModel: ContentViewModel) {
 
-    private val contentViewModel = ContentViewModel()
     private fun FeedLoad() = feedLoadTestCases()
 
     @BeforeAll

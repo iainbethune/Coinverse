@@ -66,16 +66,16 @@ class ContentTestExtension : BeforeAllCallback, AfterAllCallback, BeforeEachCall
                     saveAndReturnContentViewModel(extensionContext)
                 else getViewModel(extensionContext)
 
+    private fun getTestCoroutineDispatcher(context: ExtensionContext?) = context?.root
+            ?.getStore(TEST_COROUTINE_DISPATCHER_NAMESPACE)
+            ?.get(TEST_COROUTINE_DISPATCHER_KEY, TestCoroutineDispatcher::class.java)
+
     private fun saveAndReturnTestCoroutineDispatcher(extensionContext: ExtensionContext?) =
             TestCoroutineDispatcher().apply {
                 extensionContext?.root
                         ?.getStore(TEST_COROUTINE_DISPATCHER_NAMESPACE)
                         ?.put(TEST_COROUTINE_DISPATCHER_KEY, this)
             }
-
-    private fun getTestCoroutineDispatcher(context: ExtensionContext?) = context?.root
-            ?.getStore(TEST_COROUTINE_DISPATCHER_NAMESPACE)
-            ?.get(TEST_COROUTINE_DISPATCHER_KEY, TestCoroutineDispatcher::class.java)
 
     private fun getViewModel(context: ExtensionContext?) = context?.root
             ?.getStore(VIEWMODEL_NAMESPACE)

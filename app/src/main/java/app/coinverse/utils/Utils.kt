@@ -16,8 +16,21 @@ import app.coinverse.R.color
 import app.coinverse.R.drawable.*
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.google.android.material.snackbar.Snackbar
+import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.QuerySnapshot
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 lateinit var resourcesUtil: Resources
+
+suspend fun Query.awaitRealtime() = suspendCancellableCoroutine<QuerySnapshot?> { cont ->
+    addSnapshotListener({ value, error ->
+        if (error == null && cont.isActive && !value!!.isEmpty) {
+            println("Utils awaitRealtime ${value}")
+            cont.resume(value)
+        }
+    })
+}
 
 val pagedListConfig = Config(
         enablePlaceholders = true,

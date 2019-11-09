@@ -9,8 +9,9 @@ import app.coinverse.utils.Exchange
 import app.coinverse.utils.Exchange.*
 import app.coinverse.utils.TIMESTAMP
 import app.coinverse.utils.Timeframe
+import app.coinverse.utils.awaitRealtime
 import com.google.firebase.firestore.DocumentChange
-import com.google.firebase.firestore.EventListener
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query.Direction.ASCENDING
 import com.jjoe64.graphview.series.DataPoint
 import com.jjoe64.graphview.series.LineGraphSeries
@@ -45,23 +46,21 @@ object PriceRepository {
     private var exchangeOrdersPointsMap = HashMap<Exchange, ExchangeOrdersDataPoints>()
     private var exchangeOrdersDataMap = HashMap<Exchange, PriceGraphData>()
 
-    fun getPrices(isRealtime: Boolean, isOnCreateCall: Boolean, timeframe: Timeframe) {
+    suspend fun getPrices(isRealtime: Boolean, isOnCreateCall: Boolean, timeframe: Timeframe) {
         if (isRealtime) {
             if (isOnCreateCall) {
                 exchangeOrdersPointsMap.clear()
                 exchangeOrdersDataMap.clear()
                 index = 0
             }
-            contentEthBtcCollection
-                    .orderBy(TIMESTAMP, ASCENDING)
-                    .whereGreaterThan(TIMESTAMP, getTimeframe(timeframe))
-                    .addSnapshotListener(EventListener { value, error ->
-                        error?.run {
-                            Log.e(LOG_TAG, "Price Data EventListener Failed.", error)
-                            return@EventListener
-                        }
-                        parsePriceData(value!!.documentChanges)
-                    })
+            try {
+                contentEthBtcCollection
+                        .orderBy(TIMESTAMP, ASCENDING)
+                        .whereGreaterThan(TIMESTAMP, getTimeframe(timeframe))
+                        .awaitRealtime()?.let { value -> parsePriceData(value!!.documentChanges) }
+            } catch (error: FirebaseFirestoreException) {
+                Log.e(LOG_TAG, "Price Data EventListener Failed.", error)
+            }
         } else {
             exchangeOrdersPointsMap.clear()
             exchangeOrdersDataMap.clear()

@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations.map
 import androidx.lifecycle.Transformations.switchMap
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import app.coinverse.priceGraph.models.PercentDifference
 import app.coinverse.priceGraph.models.PriceGraphData
 import app.coinverse.priceGraph.models.PricePair
@@ -12,6 +13,7 @@ import app.coinverse.utils.*
 import app.coinverse.utils.Exchange.*
 import app.coinverse.utils.OrderType.BID
 import com.jjoe64.graphview.series.LineGraphSeries
+import kotlinx.coroutines.launch
 
 /**
  * TODO - Refactor with Unidirectional Data Flow.
@@ -59,7 +61,9 @@ class PriceViewModel : ViewModel() {
 
     fun getPrices(isRealtime: Boolean, isOnCreateCall: Boolean) {
         this.toInitializeGraphData.value = true
-        PriceRepository.getPrices(isRealtime, isOnCreateCall, timeframe.value!!)
+        viewModelScope.launch {
+            PriceRepository.getPrices(isRealtime, isOnCreateCall, timeframe.value!!)
+        }
     }
 
     fun setPriceSelected(priceSelected: Pair<Exchange, String>) {

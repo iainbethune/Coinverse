@@ -27,8 +27,11 @@ import com.google.firebase.Timestamp
 import com.google.firebase.Timestamp.now
 import com.google.firebase.auth.FirebaseAuth.getInstance
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.firestore.*
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query.Direction.DESCENDING
+import com.google.firebase.firestore.Transaction
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.google.firebase.storage.FirebaseStorage
@@ -44,7 +47,7 @@ import java.net.URL
 object ContentRepository {
     private val LOG_TAG = ContentRepository::class.java.simpleName
     fun getMainFeedList(scope: CoroutineScope, isRealtime: Boolean, timeframe: Timestamp) =
-            liveData<Lce<PagedListResult>> {
+            liveData(scope.coroutineContext) {
                 val lce = this
                 lce.emit(Loading())
                 val labeledSet = HashSet<String>()
@@ -53,73 +56,65 @@ object ContentRepository {
                 if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
                     usersDocument.collection(getInstance().currentUser!!.uid).also { user ->
                         // Get save_collection.
-                        user.document(COLLECTIONS_DOCUMENT)
-                                .collection(SAVE_COLLECTION)
-                                .orderBy(TIMESTAMP, DESCENDING)
-                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                                .addSnapshotListener(EventListener { value, error ->
-                                    error?.run {
-                                        errorMessage = "Error retrieving user save_collection: " +
-                                                "${error.localizedMessage}"
-                                        return@EventListener
-                                    }
-                                    val list = ArrayList<Content?>()
-                                    value!!.documentChanges.map { document ->
-                                        document.document.toObject(Content::class.java)
-                                                .let { savedContent ->
-                                                    list.add(savedContent)
-                                                    labeledSet.add(savedContent.id)
-                                                }
-                                    }
-                                    insertContentListToDb(scope, list)
-                                })
+                        try {
+                            user.document(COLLECTIONS_DOCUMENT)
+                                    .collection(SAVE_COLLECTION)
+                                    .orderBy(TIMESTAMP, DESCENDING)
+                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                                    .awaitRealtime()?.documentChanges?.map { document ->
+                                val list = ArrayList<Content?>()
+                                document.document.toObject(Content::class.java).let { savedContent ->
+                                    list.add(savedContent)
+                                    labeledSet.add(savedContent.id)
+                                }
+                                database.contentDao().insertContentList(list)
+                            }
+                        } catch (error: FirebaseFirestoreException) {
+                            errorMessage = "Error retrieving user save_collection: " +
+                                    "${error.localizedMessage}"
+                        }
                         // Get dismiss_collection.
-                        user.document(COLLECTIONS_DOCUMENT)
-                                .collection(DISMISS_COLLECTION)
-                                .orderBy(TIMESTAMP, DESCENDING)
-                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                                .addSnapshotListener(EventListener { value, error ->
-                                    error?.run {
-                                        errorMessage = "Error retrieving user dismiss_collection: ${error.localizedMessage}"
-                                        return@EventListener
-                                    }
-                                    val contentList = ArrayList<Content?>()
-                                    value!!.documentChanges.map { document ->
-                                        document.document.toObject(Content::class.java)
-                                                .let { dismissedContent ->
-                                                    contentList.add(dismissedContent)
-                                                    labeledSet.add(dismissedContent.id)
-                                                }
-                                    }
-                                    insertContentListToDb(scope, contentList)
-                                })
+                        try {
+                            user.document(COLLECTIONS_DOCUMENT)
+                                    .collection(DISMISS_COLLECTION)
+                                    .orderBy(TIMESTAMP, DESCENDING)
+                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                                    .awaitRealtime()?.documentChanges?.map { document ->
+                                val list = ArrayList<Content?>()
+                                document.document.toObject(Content::class.java).let { dismissedContent ->
+                                    list.add(dismissedContent)
+                                    labeledSet.add(dismissedContent.id)
+                                }
+                                database.contentDao().insertContentList(list)
+                            }
+                        } catch (error: FirebaseFirestoreException) {
+                            errorMessage = "Error retrieving user save_collection: " +
+                                    "${error.localizedMessage}"
+                        }
                         if (errorMessage.isNotEmpty())
                             lce.emit(Error(PagedListResult(null, errorMessage)))
                     }
                     // Logged in and realtime enabled.
                     if (isRealtime) //TODO - Retrieve labeledSet from Firestore.
-                        contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                                .addSnapshotListener(EventListener { value, error ->
-                                    error?.run {
-                                        scope.launch {
-                                            lce.emit(Error(PagedListResult(
-                                                    null,
-                                                    "Error retrieving logged in," +
-                                                            " realtime content_en_collection: " +
-                                                            "${error.localizedMessage}")))
-                                        }
-                                        return@EventListener
-                                    }
-                                    val list = ArrayList<Content?>()
-                                    value!!.documentChanges.map { document ->
-                                        document.document.toObject(Content::class.java).also { content ->
-                                            if (!labeledSet.contains(content.id)) list.add(content)
-                                        }
-                                    }
-                                    insertContentListToDb(scope, list)
-                                            .emitPagedList(scope, timeframe, lce)
-                                })
+                        try {
+                            contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                                    .awaitRealtime()?.documentChanges?.map { document ->
+                                val list = ArrayList<Content?>()
+                                // TODO - Filter out
+                                document.document.toObject(Content::class.java).also { content ->
+                                    if (!labeledSet.contains(content.id))
+                                        list.add(content)
+                                }
+                                database.contentDao().insertContentList(list)
+                                lce.emit(Lce.Content(PagedListResult(
+                                        queryMainContentList(timeframe), "")))
+                            }
+                        } catch (error: FirebaseFirestoreException) {
+                            lce.emit(Error(PagedListResult(null,
+                                    CONTENT_LOGGED_IN_REALTIME_ERROR +
+                                            "${error.localizedMessage}")))
+                        }
                     // Logged in, non-realtime.
                     else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
                             .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get()
@@ -341,10 +336,9 @@ object ContentRepository {
         }
     }
 
+    // TODO - Remove
     private fun insertContentListToDb(scope: CoroutineScope, contentList: ArrayList<Content?>) =
-            scope.launch {
-                database.contentDao().insertContentList(contentList)
-            }
+            scope.launch { database.contentDao().insertContentList(contentList) }
 
     private fun Job.emitPagedList(scope: CoroutineScope, timeframe: Timestamp,
                                   lce: LiveDataScope<Lce<PagedListResult>>) =

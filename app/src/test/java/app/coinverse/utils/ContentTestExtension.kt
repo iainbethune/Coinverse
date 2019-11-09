@@ -59,26 +59,32 @@ class ContentTestExtension : BeforeAllCallback, AfterAllCallback, BeforeEachCall
                                   extensionContext: ExtensionContext?) =
             if (parameterContext?.parameter?.type == TestCoroutineDispatcher::class.java)
                 if (getTestCoroutineDispatcher(extensionContext) == null)
-                    TestCoroutineDispatcher().apply {
-                        extensionContext?.root
-                                ?.getStore(TEST_COROUTINE_DISPATCHER_NAMESPACE)
-                                ?.put(TEST_COROUTINE_DISPATCHER_KEY, this)
-                    }
+                    saveAndReturnTestCoroutineDispatcher(extensionContext)
                 else getTestCoroutineDispatcher(extensionContext)
             else
                 if (getViewModel(extensionContext) == null)
-                    ContentViewModel().apply {
-                        extensionContext?.root
-                                ?.getStore(VIEWMODEL_NAMESPACE)
-                                ?.put(CONTENT_VIEWMODEL_KEY, ContentViewModel())
-                    }
+                    saveAndReturnContentViewModel(extensionContext)
                 else getViewModel(extensionContext)
 
-    fun getTestCoroutineDispatcher(context: ExtensionContext?) = context?.root
+    private fun saveAndReturnTestCoroutineDispatcher(extensionContext: ExtensionContext?) =
+            TestCoroutineDispatcher().apply {
+                extensionContext?.root
+                        ?.getStore(TEST_COROUTINE_DISPATCHER_NAMESPACE)
+                        ?.put(TEST_COROUTINE_DISPATCHER_KEY, this)
+            }
+
+    private fun getTestCoroutineDispatcher(context: ExtensionContext?) = context?.root
             ?.getStore(TEST_COROUTINE_DISPATCHER_NAMESPACE)
             ?.get(TEST_COROUTINE_DISPATCHER_KEY, TestCoroutineDispatcher::class.java)
 
-    fun getViewModel(context: ExtensionContext?) = context?.root
+    private fun getViewModel(context: ExtensionContext?) = context?.root
             ?.getStore(VIEWMODEL_NAMESPACE)
             ?.get(CONTENT_VIEWMODEL_KEY, ContentViewModel::class.java)
+
+    private fun saveAndReturnContentViewModel(extensionContext: ExtensionContext?) =
+            ContentViewModel().apply {
+                extensionContext?.root
+                        ?.getStore(VIEWMODEL_NAMESPACE)
+                        ?.put(CONTENT_VIEWMODEL_KEY, ContentViewModel())
+            }
 }

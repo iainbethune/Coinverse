@@ -58,13 +58,14 @@ class ContentTestExtension : BeforeAllCallback, AfterAllCallback, BeforeEachCall
     override fun resolveParameter(parameterContext: ParameterContext?,
                                   extensionContext: ExtensionContext?) =
             if (parameterContext?.parameter?.type == TestCoroutineDispatcher::class.java)
-                if (getTestCoroutineDispatcher(extensionContext) == null)
-                    saveAndReturnTestCoroutineDispatcher(extensionContext)
-                else getTestCoroutineDispatcher(extensionContext)
-            else
-                if (getViewModel(extensionContext) == null)
-                    saveAndReturnContentViewModel(extensionContext)
-                else getViewModel(extensionContext)
+                getTestCoroutineDispatcher(extensionContext).let { dipatcher ->
+                    if (dipatcher == null) saveAndReturnTestCoroutineDispatcher(extensionContext)
+                    else dipatcher
+                }
+            else getViewModel(extensionContext).let { viewModel ->
+                if (viewModel == null) saveAndReturnContentViewModel(extensionContext)
+                else viewModel
+            }
 
     private fun getTestCoroutineDispatcher(context: ExtensionContext?) = context?.root
             ?.getStore(TEST_COROUTINE_DISPATCHER_NAMESPACE)

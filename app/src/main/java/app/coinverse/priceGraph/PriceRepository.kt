@@ -74,7 +74,7 @@ object PriceRepository {
     }
 
     private fun parsePriceData(documentChanges: List<DocumentChange>) {
-        documentChanges.all { priceDataDocument ->
+        documentChanges.map { priceDataDocument ->
             xIndex = index++.toDouble()
             priceDataDocument.document.toObject(MaximumPercentPriceDifference::class.java).also { priceData ->
                 priceDifferenceDetailsLiveData.value = priceData.percentDifference
@@ -89,10 +89,7 @@ object PriceRepository {
                         .observeOn(mainThread())
                         .subscribeWith(object : DisposableObserver<List<HashMap<Exchange, PriceGraphData>>>() {
                             override fun onNext(priceGraphDataList: List<HashMap<Exchange, PriceGraphData>>) {
-                                priceGraphDataList.all {
-                                    graphLiveData.postValue(it)
-                                    true
-                                }
+                                priceGraphDataList.map { graphLiveData.postValue(it) }
                             }
 
                             override fun onError(e: Throwable) {
@@ -104,7 +101,6 @@ object PriceRepository {
                             }
                         }))
             }
-            true
         }
     }
 

@@ -20,9 +20,8 @@ object FirebaseHelper {
     fun init(context: Context) {
         if (BuildConfig.BUILD_TYPE == open.name) {
             var openSharedStatus = false
-            FirebaseApp.getApps(context).all { app ->
+            FirebaseApp.getApps(context).map { app ->
                 if (app.name.equals(open.name)) openSharedStatus = true
-                true
             }
             if (!openSharedStatus)
                 FirebaseApp.initializeApp(

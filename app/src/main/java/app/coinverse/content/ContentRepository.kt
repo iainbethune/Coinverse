@@ -63,15 +63,15 @@ object ContentRepository {
                                                 "${error.localizedMessage}"
                                         return@EventListener
                                     }
-                                    val contentList = ArrayList<Content?>()
+                                    val list = ArrayList<Content?>()
                                     value!!.documentChanges.map { document ->
                                         document.document.toObject(Content::class.java)
                                                 .let { savedContent ->
-                                                    contentList.add(savedContent)
+                                                    list.add(savedContent)
                                                     labeledSet.add(savedContent.id)
                                                 }
                                     }
-                                    insertContentListToDb(scope, contentList)
+                                    insertContentListToDb(scope, list)
                                 })
                         // Get dismiss_collection.
                         user.document(COLLECTIONS_DOCUMENT)
@@ -111,34 +111,27 @@ object ContentRepository {
                                         }
                                         return@EventListener
                                     }
-                                    arrayListOf<Content?>().also { contentList ->
-                                        // TODO - Refactor 'all' to 'map'
-                                        value!!.documentChanges.all { document ->
-                                            document.document.toObject(Content::class.java).also { content ->
-                                                if (!labeledSet.contains(content.id))
-                                                    contentList.add(content)
-                                            }
-                                            true
+                                    val list = ArrayList<Content?>()
+                                    value!!.documentChanges.map { document ->
+                                        document.document.toObject(Content::class.java).also { content ->
+                                            if (!labeledSet.contains(content.id)) list.add(content)
                                         }
-                                        insertContentListToDb(scope, contentList)
-                                                .emitPagedList(scope, timeframe, lce)
                                     }
+                                    insertContentListToDb(scope, list)
+                                            .emitPagedList(scope, timeframe, lce)
                                 })
                     // Logged in, non-realtime.
                     else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
                             .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get()
                             .addOnCompleteListener {
-                                arrayListOf<Content?>().also { contentList ->
-                                    it.result!!.documentChanges.all { document ->
-                                        document.document.toObject(Content::class.java).also { content ->
-                                            if (!labeledSet.contains(content.id))
-                                                contentList.add(content)
-                                        }
-                                        true
+                                val list = ArrayList<Content?>()
+                                it.result!!.documentChanges.map { document ->
+                                    document.document.toObject(Content::class.java).also { content ->
+                                        if (!labeledSet.contains(content.id)) list.add(content)
                                     }
-                                    insertContentListToDb(scope, contentList)
-                                            .emitPagedList(scope, timeframe, lce)
                                 }
+                                insertContentListToDb(scope, list)
+                                        .emitPagedList(scope, timeframe, lce)
                             }.addOnFailureListener {
                                 scope.launch {
                                     lce.emit(Error(PagedListResult(
@@ -150,14 +143,11 @@ object ContentRepository {
                 } else contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
                         .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get()
                         .addOnCompleteListener {
-                            arrayListOf<Content?>().also { contentList ->
-                                it.result!!.documents.all { document ->
-                                    contentList.add(document.toObject(Content::class.java))
-                                    true
-                                }
-                                insertContentListToDb(scope, contentList)
-                                        .emitPagedList(scope, timeframe, lce)
+                            val list = ArrayList<Content?>()
+                            it.result!!.documents.map { document ->
+                                list.add(document.toObject(Content::class.java))
                             }
+                            insertContentListToDb(scope, list).emitPagedList(scope, timeframe, lce)
                         }.addOnFailureListener {
                             scope.launch {
                                 lce.emit(Error(PagedListResult(

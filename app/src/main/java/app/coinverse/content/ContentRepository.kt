@@ -53,47 +53,46 @@ object ContentRepository {
                 var errorMessage = ""
                 // TODO - Retrieve labeledSet from Firestore.
                 if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
-                    // TODO - Unnest.
-                    usersDocument.collection(getInstance().currentUser!!.uid).also { user ->
-                        // Get save_collection.
-                        try {
-                            val list = ArrayList<Content?>()
-                            user.document(COLLECTIONS_DOCUMENT)
-                                    .collection(SAVE_COLLECTION)
-                                    .orderBy(TIMESTAMP, DESCENDING)
-                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                                    .awaitRealtime()?.documentChanges?.map { doc ->
-                                doc.document.toObject(Content::class.java).let { content ->
-                                    list.add(content)
-                                    labeledSet.add(content.id)
-                                }
+                    val user = usersDocument.collection(getInstance().currentUser!!.uid)
+                    // Get save_collection.
+                    try {
+                        val list = ArrayList<Content?>()
+                        user.document(COLLECTIONS_DOCUMENT)
+                                .collection(SAVE_COLLECTION)
+                                .orderBy(TIMESTAMP, DESCENDING)
+                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                                .awaitRealtime()?.documentChanges?.map { doc ->
+                            doc.document.toObject(Content::class.java).let { content ->
+                                list.add(content)
+                                labeledSet.add(content.id)
                             }
-                            database.contentDao().insertContentList(list)
-                        } catch (error: FirebaseFirestoreException) {
-                            errorMessage = "Error retrieving user save_collection: " +
-                                    "${error.localizedMessage}"
                         }
-                        // Get dismiss_collection.
-                        try {
-                            val list = ArrayList<Content?>()
-                            user.document(COLLECTIONS_DOCUMENT)
-                                    .collection(DISMISS_COLLECTION)
-                                    .orderBy(TIMESTAMP, DESCENDING)
-                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                                    .awaitRealtime()?.documentChanges?.map { doc ->
-                                doc.document.toObject(Content::class.java).let { content ->
-                                    list.add(content)
-                                    labeledSet.add(content.id)
-                                }
-                            }
-                            database.contentDao().insertContentList(list)
-                        } catch (error: FirebaseFirestoreException) {
-                            errorMessage = "Error retrieving user save_collection: " +
-                                    "${error.localizedMessage}"
-                        }
-                        if (errorMessage.isNotEmpty())
-                            lce.emit(Error(PagedListResult(null, errorMessage)))
+                        database.contentDao().insertContentList(list)
+                    } catch (error: FirebaseFirestoreException) {
+                        errorMessage = "Error retrieving user save_collection: " +
+                                "${error.localizedMessage}"
                     }
+                    // Get dismiss_collection.
+                    try {
+                        val list = ArrayList<Content?>()
+                        user.document(COLLECTIONS_DOCUMENT)
+                                .collection(DISMISS_COLLECTION)
+                                .orderBy(TIMESTAMP, DESCENDING)
+                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                                .awaitRealtime()?.documentChanges?.map { doc ->
+                            doc.document.toObject(Content::class.java).let { content ->
+                                list.add(content)
+                                labeledSet.add(content.id)
+                            }
+                        }
+                        database.contentDao().insertContentList(list)
+                    } catch (error: FirebaseFirestoreException) {
+                        errorMessage = "Error retrieving user save_collection: " +
+                                "${error.localizedMessage}"
+                    }
+                    if (errorMessage.isNotEmpty())
+                        lce.emit(Error(PagedListResult(null, errorMessage)))
+
                     // Logged in and realtime enabled.
                     if (isRealtime)
                         try {

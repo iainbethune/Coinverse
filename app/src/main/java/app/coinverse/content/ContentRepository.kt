@@ -77,46 +77,44 @@ object ContentRepository {
     fun queryLabeledContentList(feedType: FeedType) =
             database.contentDao().queryLabeledContentList(feedType).toLiveData(pagedListConfig)
 
-    fun getAudiocast(contentSelected: ContentSelected) =
-            MutableLiveData<Lce<ContentToPlay>>().apply {
-                value = Loading()
-                val content = contentSelected.content
-                FirebaseFunctions.getInstance(firebaseApp(true)).getHttpsCallable(GET_AUDIOCAST_FUNCTION).call(
-                        hashMapOf(
-                                BUILD_TYPE_PARAM to BUILD_TYPE,
-                                CONTENT_ID_PARAM to content.id,
-                                CONTENT_TITLE_PARAM to content.title,
-                                CONTENT_PREVIEW_IMAGE_PARAM to content.previewImage))
-                        .continueWith { task -> (task.result?.data as HashMap<String, String>) }
-                        .addOnCompleteListener { task ->
-                            if (task.isSuccessful)
-                                task.result.also { response ->
-                                    if (response?.get(ERROR_PATH_PARAM).isNullOrEmpty())
-                                        value = Lce.Content(
-                                                ContentToPlay(
-                                                        position = contentSelected.position,
-                                                        content = contentSelected.content,
-                                                        filePath = response?.get(FILE_PATH_PARAM),
-                                                        errorMessage = ""))
-                                    else value = Error(ContentToPlay(
-                                            position = contentSelected.position,
-                                            content = contentSelected.content,
-                                            filePath = "",
-                                            errorMessage = response?.get(ERROR_PATH_PARAM)!!))
-                                } else {
-                                val e = task.exception
-                                value = Error(ContentToPlay(
-                                        position = contentSelected.position,
-                                        content = contentSelected.content,
-                                        filePath = "",
-                                        errorMessage = if (e is FirebaseFunctionsException)
-                                            "$GET_AUDIOCAST_FUNCTION exception: " +
-                                                    "${e.code.name} details: ${e.details.toString()}"
-                                        else "$GET_AUDIOCAST_FUNCTION exception: ${e?.localizedMessage}"
-                                ))
-                            }
-                        }
-            }
+    fun getAudiocast(contentSelected: ContentSelected) = liveData {
+        val data = this
+        data.emit(Loading())
+        try {
+            val content = contentSelected.content
+            FirebaseFunctions.getInstance(firebaseApp(true))
+                    .getHttpsCallable(GET_AUDIOCAST_FUNCTION).call(
+                            hashMapOf(
+                                    BUILD_TYPE_PARAM to BUILD_TYPE,
+                                    CONTENT_ID_PARAM to content.id,
+                                    CONTENT_TITLE_PARAM to content.title,
+                                    CONTENT_PREVIEW_IMAGE_PARAM to content.previewImage))
+                    .continueWith { task -> (task.result?.data as HashMap<String, String>) }
+                    .await().also { response ->
+                        if (response?.get(ERROR_PATH_PARAM).isNullOrEmpty())
+                            data.emit(Lce.Content(ContentToPlay(
+                                    position = contentSelected.position,
+                                    content = contentSelected.content,
+                                    filePath = response?.get(FILE_PATH_PARAM),
+                                    errorMessage = "")))
+                        else data.emit(Error(ContentToPlay(
+                                position = contentSelected.position,
+                                content = contentSelected.content,
+                                filePath = "",
+                                errorMessage = response?.get(ERROR_PATH_PARAM)!!)))
+                    }
+        } catch (error: FirebaseFunctionsException) {
+            data.emit(Error(ContentToPlay(
+                    position = contentSelected.position,
+                    content = contentSelected.content,
+                    filePath = "",
+                    errorMessage = if (error is FirebaseFunctionsException)
+                        "$GET_AUDIOCAST_FUNCTION exception: " +
+                                "${error.code.name} details: ${error.details.toString()}"
+                    else "$GET_AUDIOCAST_FUNCTION exception: ${error?.localizedMessage}"
+            )))
+        }
+    }
 
     fun getContentUri(contentId: String, filePath: String) = liveData {
         val data = this

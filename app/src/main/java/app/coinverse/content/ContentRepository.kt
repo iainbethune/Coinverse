@@ -4,6 +4,7 @@ import android.graphics.Bitmap.CompressFormat
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
+import androidx.lifecycle.LiveDataScope
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
 import androidx.lifecycle.liveData
@@ -45,109 +46,21 @@ import java.net.URL
 // TODO - Refactor LiveData to Coroutine Flow - https://kotlinlang.org/docs/reference/coroutines/flow.html
 object ContentRepository {
     private val LOG_TAG = ContentRepository::class.java.simpleName
+
     fun getMainFeedList(scope: CoroutineScope, isRealtime: Boolean, timeframe: Timestamp) =
-            liveData(scope.coroutineContext) {
+            liveData<Lce<PagedListResult>>(scope.coroutineContext) {
                 val lce = this
                 lce.emit(Loading())
                 val labeledSet = HashSet<String>()
-                var errorMessage = ""
-                // TODO - Retrieve labeledSet from Firestore.
                 if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
                     val user = usersDocument.collection(getInstance().currentUser!!.uid)
-                    // Get save_collection.
-                    try {
-                        val list = ArrayList<Content?>()
-                        user.document(COLLECTIONS_DOCUMENT)
-                                .collection(SAVE_COLLECTION)
-                                .orderBy(TIMESTAMP, DESCENDING)
-                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                                .awaitRealtime()?.documentChanges?.map { doc ->
-                            doc.document.toObject(Content::class.java).let { content ->
-                                list.add(content)
-                                labeledSet.add(content.id)
-                            }
-                        }
-                        database.contentDao().insertContentList(list)
-                    } catch (error: FirebaseFirestoreException) {
-                        errorMessage = "Error retrieving user save_collection: " +
-                                "${error.localizedMessage}"
-                    }
-                    // Get dismiss_collection.
-                    try {
-                        val list = ArrayList<Content?>()
-                        user.document(COLLECTIONS_DOCUMENT)
-                                .collection(DISMISS_COLLECTION)
-                                .orderBy(TIMESTAMP, DESCENDING)
-                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                                .awaitRealtime()?.documentChanges?.map { doc ->
-                            doc.document.toObject(Content::class.java).let { content ->
-                                list.add(content)
-                                labeledSet.add(content.id)
-                            }
-                        }
-                        database.contentDao().insertContentList(list)
-                    } catch (error: FirebaseFirestoreException) {
-                        errorMessage = "Error retrieving user dismiss_collection: " +
-                                "${error.localizedMessage}"
-                    }
-                    if (errorMessage.isNotEmpty())
-                        lce.emit(Error(PagedListResult(null, errorMessage)))
-
-                    // Logged in and realtime enabled.
-                    if (isRealtime)
-                        try {
-                            val list = ArrayList<Content?>()
-                            contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                                    .awaitRealtime()?.documentChanges
-                                    ?.map { change -> change.document.toObject(Content::class.java) }
-                                    ?.filter { content -> !labeledSet.contains(content.id) }
-                                    ?.map { content -> list.add(content) }
-                            database.contentDao().insertContentList(list)
-                        } catch (error: FirebaseFirestoreException) {
-                            lce.emit(Error(PagedListResult(null,
-                                    CONTENT_LOGGED_IN_REALTIME_ERROR +
-                                            "${error.localizedMessage}")))
-                        }
-                    // Logged in, non-realtime.
-                    else
-                        try {
-                            val list = ArrayList<Content?>()
-                            contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get().await()
-                                    .documentChanges
-                                    ?.map { change -> change.document.toObject(Content::class.java) }
-                                    ?.filter { content -> !labeledSet.contains(content.id) }
-                                    ?.map { content -> list.add(content) }
-                            database.contentDao().insertContentList(list)
-                            lce.emit(Lce.Content(PagedListResult(
-                                    queryMainContentList(timeframe), "")))
-                        } catch (error: FirebaseFirestoreException) {
-                            lce.emit(Error(PagedListResult(
-                                    null,
-                                    CONTENT_LOGGED_IN_NON_REALTIME_ERROR +
-                                            "${error.localizedMessage}")))
-                        }
-                    // Logged out, non-realtime.
-                } else
-                    try {
-                        val list = ArrayList<Content?>()
-                        contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                                .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get().await()
-                                .documentChanges
-                                ?.map { change ->
-                                    change.document.toObject(Content::class.java).let { content ->
-                                        list.add(content)
-                                    }
-                                }
-                        database.contentDao().insertContentList(list)
-                        Lce.Content(PagedListResult(queryMainContentList(timeframe), ""))
-                    } catch (error: FirebaseFirestoreException) {
-                        lce.emit(Error(PagedListResult(
-                                null,
-                                CONTENT_LOGGED_OUT_NON_REALTIME_ERROR
-                                        + "${error.localizedMessage}")))
-                    }
+                    // TODO - Refactor scope
+                    // TODO - Refactor addOnCompleteListeners
+                    getLabeledContent(user, timeframe, labeledSet, SAVE_COLLECTION, lce)
+                    getLabeledContent(user, timeframe, labeledSet, DISMISS_COLLECTION, lce)
+                    if (isRealtime) getLoggedInAndRealtimeContent(timeframe, labeledSet, lce)
+                    else getLoggedInNonRealtimeContent(timeframe, labeledSet, lce)
+                } else getLoggedOutNonRealtimeContent(timeframe, lce)
             }
 
     fun getContent(contentId: String) =
@@ -329,6 +242,92 @@ object ContentRepository {
                     .addOnFailureListener({ e ->
                         Log.e(LOG_TAG, "Transaction failure updateQualityScore.", e)
                     })
+        }
+    }
+
+    private suspend fun getLabeledContent(user: CollectionReference, timeframe: Timestamp,
+                                          labeledSet: HashSet<String>,
+                                          saveCollection: String,
+                                          lce: LiveDataScope<Lce<PagedListResult>>) =
+            try {
+                val list = ArrayList<Content?>()
+                user.document(COLLECTIONS_DOCUMENT)
+                        .collection(saveCollection)
+                        .orderBy(TIMESTAMP, DESCENDING)
+                        .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                        .awaitRealtime()?.documentChanges?.map { doc ->
+                    doc.document.toObject(Content::class.java).let { content ->
+                        list.add(content)
+                        labeledSet.add(content.id)
+                    }
+                }
+                database.contentDao().insertContentList(list)
+            } catch (error: FirebaseFirestoreException) {
+                lce.emit(Error(PagedListResult(null,
+                        "Error retrieving user save_collection: " +
+                                "${error.localizedMessage}")))
+            }
+
+    private suspend fun getLoggedInAndRealtimeContent(timeframe: Timestamp,
+                                                      labeledSet: HashSet<String>,
+                                                      lce: LiveDataScope<Lce<PagedListResult>>) {
+        try {
+            val list = ArrayList<Content?>()
+            contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                    .awaitRealtime()?.documentChanges
+                    ?.map { change -> change.document.toObject(Content::class.java) }
+                    ?.filter { content -> !labeledSet.contains(content.id) }
+                    ?.map { content -> list.add(content) }
+            database.contentDao().insertContentList(list)
+        } catch (error: FirebaseFirestoreException) {
+            lce.emit(Error(PagedListResult(null,
+                    CONTENT_LOGGED_IN_REALTIME_ERROR +
+                            "${error.localizedMessage}")))
+        }
+    }
+
+    private suspend fun getLoggedInNonRealtimeContent(timeframe: Timestamp,
+                                                      labeledSet: HashSet<String>,
+                                                      lce: LiveDataScope<Lce<PagedListResult>>) {
+        try {
+            val list = ArrayList<Content?>()
+            contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get().await()
+                    .documentChanges
+                    ?.map { change -> change.document.toObject(Content::class.java) }
+                    ?.filter { content -> !labeledSet.contains(content.id) }
+                    ?.map { content -> list.add(content) }
+            database.contentDao().insertContentList(list)
+            lce.emit(Lce.Content(PagedListResult(
+                    queryMainContentList(timeframe), "")))
+        } catch (error: FirebaseFirestoreException) {
+            lce.emit(Error(PagedListResult(
+                    null,
+                    CONTENT_LOGGED_IN_NON_REALTIME_ERROR +
+                            "${error.localizedMessage}")))
+        }
+    }
+
+    private suspend fun getLoggedOutNonRealtimeContent(timeframe: Timestamp,
+                                                       lce: LiveDataScope<Lce<PagedListResult>>) {
+        try {
+            val list = ArrayList<Content?>()
+            contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get().await()
+                    .documentChanges
+                    ?.map { change ->
+                        change.document.toObject(Content::class.java).let { content ->
+                            list.add(content)
+                        }
+                    }
+            database.contentDao().insertContentList(list)
+            Lce.Content(PagedListResult(queryMainContentList(timeframe), ""))
+        } catch (error: FirebaseFirestoreException) {
+            lce.emit(Error(PagedListResult(
+                    null,
+                    CONTENT_LOGGED_OUT_NON_REALTIME_ERROR
+                            + "${error.localizedMessage}")))
         }
     }
 

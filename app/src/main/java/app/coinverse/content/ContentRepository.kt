@@ -258,66 +258,63 @@ object ContentRepository {
 
     private suspend fun getLoggedInAndRealtimeContent(timeframe: Timestamp,
                                                       labeledSet: HashSet<String>,
-                                                      lce: LiveDataScope<Lce<PagedListResult>>) {
-        try {
-            val list = ArrayList<Content?>()
-            contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
-                    .awaitRealtime()?.documentChanges
-                    ?.map { change -> change.document.toObject(Content::class.java) }
-                    ?.filter { content -> !labeledSet.contains(content.id) }
-                    ?.map { content -> list.add(content) }
-            database.contentDao().insertContentList(list)
-        } catch (error: FirebaseFirestoreException) {
-            lce.emit(Error(PagedListResult(null,
-                    CONTENT_LOGGED_IN_REALTIME_ERROR +
-                            "${error.localizedMessage}")))
-        }
-    }
+                                                      lce: LiveDataScope<Lce<PagedListResult>>) =
+            try {
+                val list = ArrayList<Content?>()
+                contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                        .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe)
+                        .awaitRealtime()?.documentChanges
+                        ?.map { change -> change.document.toObject(Content::class.java) }
+                        ?.filter { content -> !labeledSet.contains(content.id) }
+                        ?.map { content -> list.add(content) }
+                database.contentDao().insertContentList(list)
+            } catch (error: FirebaseFirestoreException) {
+                lce.emit(Error(PagedListResult(null,
+                        CONTENT_LOGGED_IN_REALTIME_ERROR +
+                                "${error.localizedMessage}")))
+            }
 
     private suspend fun getLoggedInNonRealtimeContent(timeframe: Timestamp,
                                                       labeledSet: HashSet<String>,
-                                                      lce: LiveDataScope<Lce<PagedListResult>>) {
-        try {
-            val list = ArrayList<Content?>()
-            contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get().await()
-                    .documentChanges
-                    ?.map { change -> change.document.toObject(Content::class.java) }
-                    ?.filter { content -> !labeledSet.contains(content.id) }
-                    ?.map { content -> list.add(content) }
-            database.contentDao().insertContentList(list)
-            lce.emit(Lce.Content(PagedListResult(
-                    queryMainContentList(timeframe), "")))
-        } catch (error: FirebaseFirestoreException) {
-            lce.emit(Error(PagedListResult(
-                    null,
-                    CONTENT_LOGGED_IN_NON_REALTIME_ERROR +
-                            "${error.localizedMessage}")))
-        }
-    }
+                                                      lce: LiveDataScope<Lce<PagedListResult>>) =
+            try {
+                val list = ArrayList<Content?>()
+                contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                        .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get().await()
+                        .documentChanges
+                        ?.map { change -> change.document.toObject(Content::class.java) }
+                        ?.filter { content -> !labeledSet.contains(content.id) }
+                        ?.map { content -> list.add(content) }
+                database.contentDao().insertContentList(list)
+                lce.emit(Lce.Content(PagedListResult(
+                        queryMainContentList(timeframe), "")))
+            } catch (error: FirebaseFirestoreException) {
+                lce.emit(Error(PagedListResult(
+                        null,
+                        CONTENT_LOGGED_IN_NON_REALTIME_ERROR +
+                                "${error.localizedMessage}")))
+            }
 
     private suspend fun getLoggedOutNonRealtimeContent(timeframe: Timestamp,
-                                                       lce: LiveDataScope<Lce<PagedListResult>>) {
-        try {
-            val list = ArrayList<Content?>()
-            contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
-                    .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get().await()
-                    .documentChanges
-                    ?.map { change ->
-                        change.document.toObject(Content::class.java).let { content ->
-                            list.add(content)
+                                                       lce: LiveDataScope<Lce<PagedListResult>>) =
+            try {
+                val list = ArrayList<Content?>()
+                contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
+                        .whereGreaterThanOrEqualTo(TIMESTAMP, timeframe).get().await()
+                        .documentChanges
+                        ?.map { change ->
+                            change.document.toObject(Content::class.java).let { content ->
+                                list.add(content)
+                            }
                         }
-                    }
-            database.contentDao().insertContentList(list)
-            Lce.Content(PagedListResult(queryMainContentList(timeframe), ""))
-        } catch (error: FirebaseFirestoreException) {
-            lce.emit(Error(PagedListResult(
-                    null,
-                    CONTENT_LOGGED_OUT_NON_REALTIME_ERROR
-                            + "${error.localizedMessage}")))
-        }
-    }
+                database.contentDao().insertContentList(list)
+                Lce.Content(PagedListResult(queryMainContentList(timeframe), ""))
+            } catch (error: FirebaseFirestoreException) {
+                lce.emit(Error(PagedListResult(
+                        null,
+                        CONTENT_LOGGED_OUT_NON_REALTIME_ERROR
+                                + "${error.localizedMessage}")))
+            }
 
     private fun addContentLabel(scope: CoroutineScope, actionType: UserActionType,
                                 userCollection: CollectionReference,

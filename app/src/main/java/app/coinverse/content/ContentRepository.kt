@@ -87,7 +87,7 @@ object ContentRepository {
                         }
                         database.contentDao().insertContentList(list)
                     } catch (error: FirebaseFirestoreException) {
-                        errorMessage = "Error retrieving user save_collection: " +
+                        errorMessage = "Error retrieving user dismiss_collection: " +
                                 "${error.localizedMessage}"
                     }
                     if (errorMessage.isNotEmpty())

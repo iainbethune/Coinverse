@@ -23,10 +23,10 @@ import kotlin.coroutines.resume
 
 lateinit var resourcesUtil: Resources
 
-suspend fun Query.awaitRealtime() = suspendCancellableCoroutine<QuerySnapshot?> { cont ->
+suspend fun Query.awaitRealtime() = suspendCancellableCoroutine<QuerySnapshot?> { continuation ->
     addSnapshotListener({ value, error ->
-        if (error == null && cont.isActive && !value!!.isEmpty) {
-            cont.resume(value)
+        if (error == null && continuation.isActive && !value!!.isEmpty) {
+            continuation.resume(value)
         }
     })
 }

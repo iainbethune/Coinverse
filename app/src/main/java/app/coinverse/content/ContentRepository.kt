@@ -179,7 +179,7 @@ object ContentRepository {
                                 else "",
                                 content,
                                 position)) { contentLabeled ->
-                            liveData<Lce<ContentLabeled>> {
+                            liveData<Lce<ContentLabeled>>(scope.coroutineContext) {
                                 when (contentLabeled) {
                                     is Lce.Content -> addContentLabel(scope, actionType,
                                             userReference, content, position)
@@ -341,19 +341,19 @@ object ContentRepository {
                         if (actionType == SAVE) SAVE_COLLECTION
                         else if (actionType == DISMISS) DISMISS_COLLECTION
                         else ""
-                userCollection.document(COLLECTIONS_DOCUMENT).collection(collection).document(content!!.id)
-                        .set(content).addOnSuccessListener {
-                            scope.launch {
-                                database.contentDao().updateContent(content)
-                            }.invokeOnCompletion {
-                                if (it?.cause == null)
-                                    value = Lce.Content(ContentLabeled(position, ""))
-                            }
-                        }.addOnFailureListener {
-                            value = Error(ContentLabeled(
-                                    position,
-                                    "'${content.title}' failed to be added to collection $collection"))
-                        }
+                try {
+                    scope.launch {
+                        userCollection.document(COLLECTIONS_DOCUMENT).collection(collection)
+                                .document(content!!.id)
+                                .set(content).await()
+                        database.contentDao().updateContent(content)
+                        value = Lce.Content(ContentLabeled(position, ""))
+                    }
+                } catch (error: FirebaseFirestoreException) {
+                    value = Error(ContentLabeled(
+                            position,
+                            "'${content?.title}' failed to be added to collection $collection"))
+                }
             }
 
     private fun removeContentLabel(userReference: CollectionReference, collection: String,

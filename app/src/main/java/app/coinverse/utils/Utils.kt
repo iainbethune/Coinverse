@@ -26,7 +26,6 @@ lateinit var resourcesUtil: Resources
 suspend fun Query.awaitRealtime() = suspendCancellableCoroutine<QuerySnapshot?> { cont ->
     addSnapshotListener({ value, error ->
         if (error == null && cont.isActive && !value!!.isEmpty) {
-            println("Utils awaitRealtime ${value}")
             cont.resume(value)
         }
     })

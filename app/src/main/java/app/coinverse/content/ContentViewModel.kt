@@ -150,8 +150,7 @@ class ContentViewModel : ViewModel() {
                         _viewEffect.send(SignInEffect(true))
                         liveData<Event<app.coinverse.content.models.ContentLabeled?>> { emit(Event(null)) }
                     })
-            is ContentShared ->
-                _viewEffect.send(ShareContentIntentEffect(getContent(event.content.id)))
+            is ContentShared -> _viewEffect.send(ShareContentIntentEffect(getContent(event.content.id)))
             is ContentSourceOpened -> _viewEffect.send(OpenContentSourceIntentEffect(event.url))
             is UpdateAds -> _viewEffect.send(UpdateAdsEffect())
         }

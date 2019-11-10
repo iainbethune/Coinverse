@@ -63,12 +63,10 @@ object ContentRepository {
                 } else getLoggedOutNonRealtimeContent(timeframe, lce)
             }
 
-    fun getContent(contentId: String) =
-            MutableLiveData<Event<Content>>().apply {
-                contentEnCollection.document(contentId).get().addOnCompleteListener { result ->
-                    value = Event((result.result?.toObject(Content::class.java)!!))
-                }
-            }
+    fun getContent(contentId: String) = liveData {
+        this.emit(Event(contentEnCollection.document(contentId).get().await()
+                ?.toObject(Content::class.java)!!))
+    }
 
     fun queryMainContentList(timestamp: Timestamp) =
             database.contentDao().queryMainContentList(timestamp, MAIN).toLiveData(pagedListConfig)

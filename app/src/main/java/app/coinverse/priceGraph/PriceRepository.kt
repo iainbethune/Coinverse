@@ -23,6 +23,7 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.functions.Function4
 import io.reactivex.observers.DisposableObserver
 import io.reactivex.schedulers.Schedulers.io
+import kotlinx.coroutines.tasks.await
 
 private val LOG_TAG = PriceRepository::class.java.simpleName
 
@@ -62,13 +63,16 @@ object PriceRepository {
                 Log.e(LOG_TAG, "Price Data EventListener Failed.", error)
             }
         } else {
-            exchangeOrdersPointsMap.clear()
-            exchangeOrdersDataMap.clear()
-            index = 0
-            contentEthBtcCollection.orderBy(TIMESTAMP, ASCENDING)
-                    .whereGreaterThan(TIMESTAMP, getTimeframe(timeframe))
-                    .get()
-                    .addOnCompleteListener { parsePriceData(it.result!!.documentChanges) }
+            try {
+                exchangeOrdersPointsMap.clear()
+                exchangeOrdersDataMap.clear()
+                index = 0
+                parsePriceData(contentEthBtcCollection.orderBy(TIMESTAMP, ASCENDING)
+                        .whereGreaterThan(TIMESTAMP, getTimeframe(timeframe))
+                        .get().await().documentChanges)
+            } catch (error: FirebaseFirestoreException) {
+                Log.e(LOG_TAG, "Price Data EventListener Failed.", error)
+            }
         }
     }
 

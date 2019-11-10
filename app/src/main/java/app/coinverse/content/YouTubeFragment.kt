@@ -24,6 +24,11 @@ import com.google.android.youtube.player.YouTubePlayer
 import com.google.android.youtube.player.YouTubePlayerSupportFragment
 import kotlinx.coroutines.launch
 
+/**
+ * TODO - Refactor with Unidirectional Data Flow.
+ *  See [ContentFragment]
+ *  https://medium.com/hackernoon/android-unidirectional-flow-with-livedata-bf24119e747
+ **/
 class YouTubeFragment : Fragment() {
 
     private var LOG_TAG = YouTubeFragment::class.java.simpleName

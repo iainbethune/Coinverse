@@ -54,8 +54,6 @@ object ContentRepository {
                 val labeledSet = HashSet<String>()
                 if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
                     val user = usersDocument.collection(getInstance().currentUser!!.uid)
-                    // TODO - Refactor scope
-                    // TODO - Refactor MutableLiveData
                     // TODO - Refactor addOnCompleteListeners
                     getLabeledContent(user, timeframe, labeledSet, SAVE_COLLECTION, lce)
                     getLabeledContent(user, timeframe, labeledSet, DISMISS_COLLECTION, lce)

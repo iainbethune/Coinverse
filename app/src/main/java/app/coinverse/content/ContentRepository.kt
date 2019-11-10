@@ -35,6 +35,7 @@ import com.google.firebase.firestore.Transaction
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -117,32 +118,25 @@ object ContentRepository {
                         }
             }
 
-    fun getContentUri(contentId: String, filePath: String) =
-            MutableLiveData<Lce<ContentPlayer>>().apply {
-                value = Loading()
-                FirebaseStorage.getInstance(firebaseApp(true)).reference.child(filePath).downloadUrl
-                        .addOnSuccessListener { uri ->
-                            contentEnCollection.document(contentId) // Update content Audio Uri.
-                                    .update(AUDIO_URL, Regex(AUDIO_URL_TOKEN_REGEX).replace(
-                                            uri.toString(), ""))
-                                    .addOnSuccessListener {
-                                        value = Lce.Content(ContentPlayer(
-                                                uri = uri,
-                                                image = ByteArray(0),
-                                                errorMessage = ""))
-                                    }.addOnFailureListener {
-                                        value = Error(ContentPlayer(
-                                                uri = Uri.EMPTY,
-                                                image = ByteArray(0),
-                                                errorMessage = it.localizedMessage))
-                                    }
-                        }.addOnFailureListener {
-                            value = Error(ContentPlayer(
-                                    Uri.parse(""),
-                                    ByteArray(0),
-                                    "getContentUri error - ${it.localizedMessage}"))
-                        }
-            }
+    fun getContentUri(contentId: String, filePath: String) = liveData {
+        val data = this
+        data.emit(Loading())
+        try {
+            val uri = FirebaseStorage.getInstance(firebaseApp(true))
+                    .reference.child(filePath).downloadUrl.await()
+            contentEnCollection.document(contentId) // Update content Audio Uri.
+                    .update(AUDIO_URL, Regex(AUDIO_URL_TOKEN_REGEX)
+                            .replace(uri.toString(), "")).await()
+            data.emit(Lce.Content(ContentPlayer(
+                    uri = uri,
+                    image = ByteArray(0),
+                    errorMessage = "")))
+        } catch (error: StorageException) {
+            data.emit(Error(ContentPlayer(
+                    Uri.parse(""),
+                    ByteArray(0), "getContentUri error - ${error.localizedMessage}")))
+        }
+    }
 
     fun bitmapToByteArray(url: String) = liveData(Dispatchers.IO) {
         val data = this

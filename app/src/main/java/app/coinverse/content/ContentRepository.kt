@@ -62,17 +62,17 @@ object ContentRepository {
                 } else getLoggedOutNonRealtimeContent(timeframe, lce)
             }
 
-    fun getContent(contentId: String) = liveData {
-        this.emit(Event(contentEnCollection.document(contentId).get().await()
-                ?.toObject(Content::class.java)!!))
-    }
-
     fun queryMainContentList(timestamp: Timestamp) =
             database.contentDao().queryMainContentList(timestamp, MAIN).toLiveData(pagedListConfig)
 
 
     fun queryLabeledContentList(feedType: FeedType) =
             database.contentDao().queryLabeledContentList(feedType).toLiveData(pagedListConfig)
+
+    fun getContent(contentId: String) = liveData {
+        this.emit(Event(contentEnCollection.document(contentId).get().await()
+                ?.toObject(Content::class.java)!!))
+    }
 
     fun getAudiocast(contentSelected: ContentSelected) = liveData {
         val data = this

@@ -357,16 +357,20 @@ object ContentRepository {
             }
 
     private fun removeContentLabel(userReference: CollectionReference, collection: String,
-                                   content: Content?, position: Int) =
-            MutableLiveData<Lce<ContentLabeled>>().apply {
-                value = Loading()
-                userReference.document(COLLECTIONS_DOCUMENT).collection(collection).document(content!!.id)
-                        .delete().addOnSuccessListener {
-                            value = Lce.Content(ContentLabeled(position, ""))
-                        }.addOnFailureListener {
-                            value = Error(ContentLabeled(
-                                    position,
-                                    "Content failed to be deleted from ${collection}: ${it.localizedMessage}"))
-                        }
-            }
+                                   content: Content?, position: Int) = liveData {
+        val data = this
+        data.emit(Loading())
+        try {
+            userReference.document(COLLECTIONS_DOCUMENT)
+                    .collection(collection)
+                    .document(content!!.id)
+                    .delete().await()
+            data.emit(Lce.Content(ContentLabeled(position, "")))
+        } catch (error: FirebaseFirestoreException) {
+            data.emit(Error(ContentLabeled(
+                    position,
+                    "Content failed to be deleted from " +
+                            "${collection}: ${error.localizedMessage}")))
+        }
+    }
 }

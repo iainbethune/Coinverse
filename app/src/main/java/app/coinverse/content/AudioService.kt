@@ -43,13 +43,12 @@ import com.google.android.exoplayer2.util.Util
 import com.google.android.exoplayer2.video.VideoRendererEventListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 private val LOG_TAG = AudioService::class.java.simpleName
 
 class AudioService : Service() {
-    private lateinit var job: Job
     private var player: SimpleExoPlayer? = null
     private var playerNotificationManager: PlayerNotificationManager? = null
     private var content = Content()
@@ -79,7 +78,6 @@ class AudioService : Service() {
         playerNotificationManager?.setPlayer(null)
         player?.release()
         wakeAndwifiLockManager(false)
-        job.cancel()
         super.onDestroy()
     }
 
@@ -200,11 +198,17 @@ class AudioService : Service() {
             if (player?.currentPosition!! > 0L && newSeekPositionMillis > seekToPositionMillis
                     && playOrPausePressed == false && playbackState == Player.STATE_BUFFERING)
                 seekToPositionMillis = newSeekPositionMillis.toInt()
-            job = CoroutineScope(Dispatchers.IO).launch {
-                updateActionsAndAnalytics(content,
-                        getWatchPercent(player?.currentPosition!!.toDouble(),
-                        seekToPositionMillis.toDouble(), player?.duration!!.toDouble()))
+            val job = CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    updateActionsAndAnalytics(content,
+                            getWatchPercent(player?.currentPosition!!.toDouble(),
+                                    seekToPositionMillis.toDouble(), player?.duration!!.toDouble()))
+                } catch (error: Exception) {
+                    this.cancel()
+                    Crashlytics.log(Log.ERROR, LOG_TAG, "Audio error: ${error.localizedMessage}")
+                }
             }
+            job.invokeOnCompletion { job.cancel() }
         }
 
         override fun onPositionDiscontinuity(@Player.DiscontinuityReason reason: Int) {
@@ -236,7 +240,6 @@ class AudioService : Service() {
         player?.playWhenReady = false
         wakeAndwifiLockManager(false)
         stopForeground(true)
-        job.cancel()
         stopSelf()
     }
 

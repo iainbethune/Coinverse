@@ -147,41 +147,40 @@ object ContentRepository {
     }.flowOn(Dispatchers.IO)
 
     fun editContentLabels(scope: CoroutineScope, feedType: FeedType, actionType: UserActionType,
-                          content: Content?, user: FirebaseUser, position: Int) =
-            liveData<Lce<ContentLabeled>>(scope.coroutineContext) {
-                usersDocument.collection(user.uid).let { userReference ->
-                    content?.feedType =
-                            if (actionType == SAVE) SAVED
-                            else if (actionType == DISMISS) DISMISSED
-                            else MAIN
-                    if (actionType == SAVE || actionType == DISMISS) {
-                        if (feedType == SAVED || feedType == DISMISSED) {
-                            removeContentLabel(
-                                    userReference,
-                                    if (actionType == SAVE && feedType == DISMISSED) DISMISS_COLLECTION
-                                    else if (actionType == DISMISS && feedType == SAVED) SAVE_COLLECTION
-                                    else "",
-                                    content,
-                                    position).collect { contentLabeled ->
-                                when (contentLabeled) {
-                                    is Lce.Content -> addContentLabel(
-                                            scope = scope,
-                                            actionType = actionType,
-                                            userCollection = userReference,
-                                            content = content,
-                                            position = position)
-                                    is Error -> liveData { emit(contentLabeled) }
-                                }
-                            }
-                        } else addContentLabel(
-                                scope = scope,
-                                actionType = actionType,
-                                userCollection = userReference,
-                                content = content,
-                                position = position)
+                          content: Content?, user: FirebaseUser, position: Int) = liveData {
+        usersDocument.collection(user.uid).let { userReference ->
+            content?.feedType =
+                    if (actionType == SAVE) SAVED
+                    else if (actionType == DISMISS) DISMISSED
+                    else MAIN
+            if (actionType == SAVE || actionType == DISMISS) {
+                if (feedType == SAVED || feedType == DISMISSED) {
+                    removeContentLabel(
+                            userReference = userReference,
+                            collection = if (actionType == SAVE && feedType == DISMISSED)
+                                DISMISS_COLLECTION else if (actionType == DISMISS && feedType == SAVED)
+                                SAVE_COLLECTION else "",
+                            content = content,
+                            position = position).collect { contentLabeled ->
+                        when (contentLabeled) {
+                            is Lce.Content -> addContentLabel(
+                                    scope = scope,
+                                    actionType = actionType,
+                                    userCollection = userReference,
+                                    content = content,
+                                    position = position)
+                            is Error -> emit(contentLabeled)
+                        }
                     }
-                }
+                } else addContentLabel(
+                        scope = scope,
+                        actionType = actionType,
+                        userCollection = userReference,
+                        content = content,
+                        position = position)
             }
+        }
+    }
 
     //TODO - Move to Cloud Function
     fun updateContentActionCounter(contentId: String, counterType: String) {

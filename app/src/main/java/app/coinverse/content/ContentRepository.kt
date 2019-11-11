@@ -5,7 +5,6 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Transformations
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.liveData
 import androidx.paging.toLiveData
@@ -39,6 +38,7 @@ import com.google.firebase.storage.StorageException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
@@ -155,14 +155,14 @@ object ContentRepository {
                         else MAIN
                 if (actionType == SAVE || actionType == DISMISS) {
                     if (feedType == SAVED || feedType == DISMISSED) {
-                        Transformations.switchMap(removeContentLabel(
-                                userReference,
-                                if (actionType == SAVE && feedType == DISMISSED) DISMISS_COLLECTION
-                                else if (actionType == DISMISS && feedType == SAVED) SAVE_COLLECTION
-                                else "",
-                                content,
-                                position)) { contentLabeled ->
-                            liveData<Lce<ContentLabeled>>(scope.coroutineContext) {
+                        liveData<Lce<ContentLabeled>>(scope.coroutineContext) {
+                            removeContentLabel(
+                                    userReference,
+                                    if (actionType == SAVE && feedType == DISMISSED) DISMISS_COLLECTION
+                                    else if (actionType == DISMISS && feedType == SAVED) SAVE_COLLECTION
+                                    else "",
+                                    content,
+                                    position).collect { contentLabeled ->
                                 when (contentLabeled) {
                                     is Lce.Content -> addContentLabel(scope, actionType,
                                             userReference, content, position)
@@ -335,20 +335,18 @@ object ContentRepository {
             }
 
     private fun removeContentLabel(userReference: CollectionReference, collection: String,
-                                   content: Content?, position: Int) = liveData {
-        val data = this
-        data.emit(Loading())
+                                   content: Content?, position: Int) = flow {
+        emit(Loading())
         try {
             userReference.document(COLLECTIONS_DOCUMENT)
                     .collection(collection)
                     .document(content!!.id)
                     .delete().await()
-            data.emit(Lce.Content(ContentLabeled(position, "")))
+            emit(Lce.Content(ContentLabeled(position, "")))
         } catch (error: FirebaseFirestoreException) {
-            data.emit(Error(ContentLabeled(
+            emit(Error(ContentLabeled(
                     position,
-                    "Content failed to be deleted from " +
-                            "${collection}: ${error.localizedMessage}")))
+                    "Content failed to be deleted from ${collection}: ${error.localizedMessage}")))
         }
     }
 }

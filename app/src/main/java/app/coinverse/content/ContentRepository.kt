@@ -52,8 +52,8 @@ object ContentRepository {
         val labeledSet = HashSet<String>()
         if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
             val user = usersDocument.collection(getInstance().currentUser!!.uid)
-            getLabeledContent(user, timeframe, labeledSet, SAVE_COLLECTION, this)
-            getLabeledContent(user, timeframe, labeledSet, DISMISS_COLLECTION, this)
+            syncLabeledContent(user, timeframe, labeledSet, SAVE_COLLECTION, this)
+            syncLabeledContent(user, timeframe, labeledSet, DISMISS_COLLECTION, this)
             if (isRealtime) getLoggedInAndRealtimeContent(timeframe, labeledSet, this)
             else getLoggedInNonRealtimeContent(timeframe, labeledSet, this)
         } else getLoggedOutNonRealtimeContent(timeframe, this)
@@ -230,10 +230,10 @@ object ContentRepository {
         }
     }
 
-    private suspend fun getLabeledContent(user: CollectionReference, timeframe: Timestamp,
-                                          labeledSet: HashSet<String>,
-                                          saveCollection: String,
-                                          lce: FlowCollector<Lce<PagedListResult>>) =
+    private suspend fun syncLabeledContent(user: CollectionReference, timeframe: Timestamp,
+                                           labeledSet: HashSet<String>,
+                                           saveCollection: String,
+                                           lce: FlowCollector<Lce<PagedListResult>>) =
             try {
                 val list = ArrayList<Content?>()
                 user.document(COLLECTIONS_DOCUMENT)

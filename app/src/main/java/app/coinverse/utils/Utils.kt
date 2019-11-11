@@ -34,8 +34,7 @@ suspend fun Query.awaitRealtime() = suspendCancellableCoroutine<QuerySnapshot?> 
 val pagedListConfig = Config(
         enablePlaceholders = true,
         prefetchDistance = PREFETCH_DISTANCE,
-        pageSize = PAGE_SIZE
-)
+        pageSize = PAGE_SIZE)
 
 fun convertDpToPx(dp: Int) = Math.round(dp * (resourcesUtil.displayMetrics.xdpi / DisplayMetrics.DENSITY_DEFAULT))
 

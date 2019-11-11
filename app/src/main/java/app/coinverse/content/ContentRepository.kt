@@ -145,35 +145,34 @@ object ContentRepository {
 
     fun editContentLabels(feedType: FeedType, actionType: UserActionType, content: Content?,
                           user: FirebaseUser, position: Int) = flow {
-        usersDocument.collection(user.uid).let { userReference ->
-            content?.feedType =
-                    if (actionType == SAVE) SAVED
-                    else if (actionType == DISMISS) DISMISSED
-                    else MAIN
-            if (actionType == SAVE || actionType == DISMISS) {
-                if (feedType == SAVED || feedType == DISMISSED) {
-                    removeContentLabel(
-                            userReference = userReference,
-                            collection = if (actionType == SAVE && feedType == DISMISSED)
-                                DISMISS_COLLECTION else if (actionType == DISMISS && feedType == SAVED)
-                                SAVE_COLLECTION else "",
-                            content = content,
-                            position = position).collect { contentLabeled ->
-                        when (contentLabeled) {
-                            is Lce.Content -> addContentLabel(
-                                    actionType = actionType,
-                                    userCollection = userReference,
-                                    content = content,
-                                    position = position).collect { emit(it) }
-                            is Error -> emit(contentLabeled)
-                        }
-                    }
-                } else addContentLabel(
-                        actionType = actionType,
-                        userCollection = userReference,
+        val userReference = usersDocument.collection(user.uid)
+        content?.feedType =
+                if (actionType == SAVE) SAVED
+                else if (actionType == DISMISS) DISMISSED
+                else MAIN
+        if (actionType == SAVE || actionType == DISMISS) {
+            if (feedType == SAVED || feedType == DISMISSED) {
+                removeContentLabel(
+                        userReference = userReference,
+                        collection = if (actionType == SAVE && feedType == DISMISSED)
+                            DISMISS_COLLECTION else if (actionType == DISMISS && feedType == SAVED)
+                            SAVE_COLLECTION else "",
                         content = content,
-                        position = position).collect { emit(it) }
-            }
+                        position = position).collect { contentLabeled ->
+                    when (contentLabeled) {
+                        is Lce.Content -> addContentLabel(
+                                actionType = actionType,
+                                userCollection = userReference,
+                                content = content,
+                                position = position).collect { emit(it) }
+                        is Error -> emit(contentLabeled)
+                    }
+                }
+            } else addContentLabel(
+                    actionType = actionType,
+                    userCollection = userReference,
+                    content = content,
+                    position = position).collect { emit(it) }
         }
     }
 

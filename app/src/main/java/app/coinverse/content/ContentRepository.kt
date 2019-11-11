@@ -148,14 +148,14 @@ object ContentRepository {
 
     fun editContentLabels(scope: CoroutineScope, feedType: FeedType, actionType: UserActionType,
                           content: Content?, user: FirebaseUser, position: Int) =
-            usersDocument.collection(user.uid).let { userReference ->
-                content?.feedType =
-                        if (actionType == SAVE) SAVED
-                        else if (actionType == DISMISS) DISMISSED
-                        else MAIN
-                if (actionType == SAVE || actionType == DISMISS) {
-                    if (feedType == SAVED || feedType == DISMISSED) {
-                        liveData<Lce<ContentLabeled>>(scope.coroutineContext) {
+            liveData<Lce<ContentLabeled>>(scope.coroutineContext) {
+                usersDocument.collection(user.uid).let { userReference ->
+                    content?.feedType =
+                            if (actionType == SAVE) SAVED
+                            else if (actionType == DISMISS) DISMISSED
+                            else MAIN
+                    if (actionType == SAVE || actionType == DISMISS) {
+                        if (feedType == SAVED || feedType == DISMISSED) {
                             removeContentLabel(
                                     userReference,
                                     if (actionType == SAVE && feedType == DISMISSED) DISMISS_COLLECTION
@@ -164,14 +164,23 @@ object ContentRepository {
                                     content,
                                     position).collect { contentLabeled ->
                                 when (contentLabeled) {
-                                    is Lce.Content -> addContentLabel(scope, actionType,
-                                            userReference, content, position)
+                                    is Lce.Content -> addContentLabel(
+                                            scope = scope,
+                                            actionType = actionType,
+                                            userCollection = userReference,
+                                            content = content,
+                                            position = position)
                                     is Error -> liveData { emit(contentLabeled) }
                                 }
                             }
-                        }
-                    } else addContentLabel(scope, actionType, userReference, content, position)
-                } else MutableLiveData()
+                        } else addContentLabel(
+                                scope = scope,
+                                actionType = actionType,
+                                userCollection = userReference,
+                                content = content,
+                                position = position)
+                    }
+                }
             }
 
     //TODO - Move to Cloud Function

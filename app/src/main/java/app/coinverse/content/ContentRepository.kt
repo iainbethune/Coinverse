@@ -4,7 +4,6 @@ import android.graphics.Bitmap.CompressFormat
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.liveData
 import androidx.paging.toLiveData
@@ -163,21 +162,21 @@ object ContentRepository {
                             content = content,
                             position = position).collect { contentLabeled ->
                         when (contentLabeled) {
-                            is Lce.Content -> addContentLabel(
+                            is Lce.Content -> emitSource(addContentLabel(
                                     scope = scope,
                                     actionType = actionType,
                                     userCollection = userReference,
                                     content = content,
-                                    position = position)
+                                    position = position))
                             is Error -> emit(contentLabeled)
                         }
                     }
-                } else addContentLabel(
+                } else emitSource(addContentLabel(
                         scope = scope,
                         actionType = actionType,
                         userCollection = userReference,
                         content = content,
-                        position = position)
+                        position = position))
             }
         }
     }
@@ -320,27 +319,26 @@ object ContentRepository {
 
     private fun addContentLabel(scope: CoroutineScope, actionType: UserActionType,
                                 userCollection: CollectionReference,
-                                content: Content?, position: Int) =
-            MutableLiveData<Lce<ContentLabeled>>().apply {
-                value = Loading()
-                val collection =
-                        if (actionType == SAVE) SAVE_COLLECTION
-                        else if (actionType == DISMISS) DISMISS_COLLECTION
-                        else ""
-                try {
-                    scope.launch {
-                        userCollection.document(COLLECTIONS_DOCUMENT).collection(collection)
-                                .document(content!!.id)
-                                .set(content).await()
-                        database.contentDao().updateContent(content)
-                        value = Lce.Content(ContentLabeled(position, ""))
-                    }
-                } catch (error: FirebaseFirestoreException) {
-                    value = Error(ContentLabeled(
-                            position,
-                            "'${content?.title}' failed to be added to collection $collection"))
-                }
+                                content: Content?, position: Int) = liveData {
+        emit(Loading())
+        val collection =
+                if (actionType == SAVE) SAVE_COLLECTION
+                else if (actionType == DISMISS) DISMISS_COLLECTION
+                else ""
+        try {
+            scope.launch {
+                userCollection.document(COLLECTIONS_DOCUMENT).collection(collection)
+                        .document(content!!.id)
+                        .set(content).await()
+                database.contentDao().updateContent(content)
+                emit(Lce.Content(ContentLabeled(position, "")))
             }
+        } catch (error: FirebaseFirestoreException) {
+            emit(Error(ContentLabeled(
+                    position,
+                    "'${content?.title}' failed to be added to collection $collection")))
+        }
+    }
 
     private fun removeContentLabel(userReference: CollectionReference, collection: String,
                                    content: Content?, position: Int) = flow {

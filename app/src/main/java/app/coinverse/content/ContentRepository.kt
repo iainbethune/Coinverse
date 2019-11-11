@@ -70,13 +70,11 @@ object ContentRepository {
             database.contentDao().queryLabeledContentList(feedType).toLiveData(pagedListConfig).asFlow()
 
     fun getContent(contentId: String) = liveData {
-        this.emit(Event(contentEnCollection.document(contentId).get().await()
-                ?.toObject(Content::class.java)!!))
+        emit(Event(contentEnCollection.document(contentId).get().await()?.toObject(Content::class.java)!!))
     }
 
-    fun getAudiocast(contentSelected: ContentSelected) = liveData {
-        val data = this
-        data.emit(Loading())
+    fun getAudiocast(contentSelected: ContentSelected) = flow {
+        emit(Loading())
         try {
             val content = contentSelected.content
             FirebaseFunctions.getInstance(firebaseApp(true))
@@ -89,19 +87,19 @@ object ContentRepository {
                     .continueWith { task -> (task.result?.data as HashMap<String, String>) }
                     .await().also { response ->
                         if (response?.get(ERROR_PATH_PARAM).isNullOrEmpty())
-                            data.emit(Lce.Content(ContentToPlay(
+                            emit(Lce.Content(ContentToPlay(
                                     position = contentSelected.position,
                                     content = contentSelected.content,
                                     filePath = response?.get(FILE_PATH_PARAM),
                                     errorMessage = "")))
-                        else data.emit(Error(ContentToPlay(
+                        else emit(Error(ContentToPlay(
                                 position = contentSelected.position,
                                 content = contentSelected.content,
                                 filePath = "",
                                 errorMessage = response?.get(ERROR_PATH_PARAM)!!)))
                     }
         } catch (error: FirebaseFunctionsException) {
-            data.emit(Error(ContentToPlay(
+            emit(Error(ContentToPlay(
                     position = contentSelected.position,
                     content = contentSelected.content,
                     filePath = "",

@@ -72,8 +72,8 @@ class ContentViewModel : ViewModel() {
                 val contentSelected = ContentSelected(event.position, event.content)
                 when (contentSelected.content.contentType) {
                     ARTICLE -> _feedViewState.value = _feedViewState.value?.copy(contentToPlay =
-                    switchMap(getAudiocast(contentSelected)) { lce ->
-                        liveData {
+                    liveData {
+                        getAudiocast(contentSelected).collect { lce ->
                             when (lce) {
                                 is Loading -> {
                                     setContentLoadingStatus(contentSelected.content.id, VISIBLE)

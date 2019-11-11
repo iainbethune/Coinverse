@@ -52,23 +52,21 @@ fun mockQueryMainContentListLiveData(mockFeedList: List<Content>) =
                     .build())
         }
 
-fun mockGetAudiocast(test: PlayContentTest) =
-        MutableLiveData<Lce<ContentToPlay>>().also { lce ->
-            when (test.lceState) {
-                LOADING -> lce.value = Loading()
-                CONTENT -> lce.value = Lce.Content(ContentToPlay(
-                        position = test.mockPosition,
-                        content = test.mockContent,
-                        filePath = test.mockFilePath,
-                        errorMessage = ""
-                ))
-                ERROR -> lce.value = Error(ContentToPlay(
-                        position = test.mockPosition,
-                        content = test.mockContent,
-                        filePath = test.mockFilePath,
-                        errorMessage = test.mockGetAudiocastError))
-            }
-        }
+fun mockGetAudiocast(test: PlayContentTest) = flow {
+    when (test.lceState) {
+        LOADING -> emit(Loading())
+        CONTENT -> emit(Lce.Content(ContentToPlay(
+                position = test.mockPosition,
+                content = test.mockContent,
+                filePath = test.mockFilePath,
+                errorMessage = "")))
+        ERROR -> emit(Error(ContentToPlay(
+                position = test.mockPosition,
+                content = test.mockContent,
+                filePath = test.mockFilePath,
+                errorMessage = test.mockGetAudiocastError)))
+    }
+}
 
 fun mockGetContentUri(test: PlayContentTest) =
         MutableLiveData<Lce<ContentPlayer>>().apply {

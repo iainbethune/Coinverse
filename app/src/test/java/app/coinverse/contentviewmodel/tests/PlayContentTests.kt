@@ -56,6 +56,7 @@ class PlayContentTests(val testDispatcher: TestCoroutineDispatcher,
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
             contentViewModel.processEvent(event)
+            assertContentList(test)
         }
         ContentSelected(test.mockPosition, test.mockContent).also { event ->
             contentViewModel.processEvent(event)
@@ -81,11 +82,12 @@ class PlayContentTests(val testDispatcher: TestCoroutineDispatcher,
         // Coinverse
 
         // ContentRepository
-        coEvery { getMainFeedList(any(), test.isRealtime, any()) } returns mockGetMainFeedList(
-                test.mockFeedList, CONTENT)
+        coEvery {
+            getMainFeedList(test.isRealtime, any())
+        } returns mockGetMainFeedList(test.mockFeedList, CONTENT)
         every {
             queryLabeledContentList(test.feedType)
-        } returns mockQueryMainContentList(test.mockFeedList)
+        } returns mockQueryMainContentListFlow(test.mockFeedList)
         every {
             getAudiocast(ContentSelected(test.mockPosition, test.mockContent))
         } returns mockGetAudiocast(test)
@@ -99,6 +101,12 @@ class PlayContentTests(val testDispatcher: TestCoroutineDispatcher,
         every { TTS_CHAR_LIMIT_ERROR } returns MOCK_TTS_CHAR_LIMIT_ERROR
         every { TTS_CHAR_LIMIT_ERROR_MESSAGE } returns MOCK_TTS_CHAR_LIMIT_ERROR_MESSAGE
         every { CONTENT_PLAY_ERROR } returns MOCK_CONTENT_PLAY_ERROR
+    }
+
+    private fun assertContentList(test: PlayContentTest) {
+        contentViewModel.feedViewState().contentList.getOrAwaitValue().also { pagedList ->
+            assertThat(pagedList).isEqualTo(test.mockFeedList)
+        }
     }
 
     private fun assertContentSelected(test: PlayContentTest) {
@@ -212,7 +220,7 @@ class PlayContentTests(val testDispatcher: TestCoroutineDispatcher,
     private fun verifyTests(test: PlayContentTest) {
         coVerify {
             when (test.feedType) {
-                MAIN -> getMainFeedList(any(), test.isRealtime, any())
+                MAIN -> getMainFeedList(test.isRealtime, any())
                 SAVED, DISMISSED -> queryLabeledContentList(test.feedType)
             }
             if (test.mockContent.contentType == ARTICLE) {

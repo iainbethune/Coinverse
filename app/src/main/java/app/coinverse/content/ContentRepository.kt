@@ -4,9 +4,9 @@ import android.graphics.Bitmap.CompressFormat
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
-import androidx.lifecycle.LiveDataScope
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
+import androidx.lifecycle.asFlow
 import androidx.lifecycle.liveData
 import androidx.paging.toLiveData
 import app.coinverse.BuildConfig.BUILD_TYPE
@@ -38,6 +38,8 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.io.ByteArrayOutputStream
@@ -48,26 +50,24 @@ import java.net.URL
 object ContentRepository {
     private val LOG_TAG = ContentRepository::class.java.simpleName
 
-    fun getMainFeedList(scope: CoroutineScope, isRealtime: Boolean, timeframe: Timestamp) =
-            liveData<Lce<PagedListResult>>(scope.coroutineContext) {
-                val lce = this
-                lce.emit(Loading())
-                val labeledSet = HashSet<String>()
-                if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
-                    val user = usersDocument.collection(getInstance().currentUser!!.uid)
-                    getLabeledContent(user, timeframe, labeledSet, SAVE_COLLECTION, lce)
-                    getLabeledContent(user, timeframe, labeledSet, DISMISS_COLLECTION, lce)
-                    if (isRealtime) getLoggedInAndRealtimeContent(timeframe, labeledSet, lce)
-                    else getLoggedInNonRealtimeContent(timeframe, labeledSet, lce)
-                } else getLoggedOutNonRealtimeContent(timeframe, lce)
-            }
+    fun getMainFeedList(isRealtime: Boolean, timeframe: Timestamp) = flow<Lce<PagedListResult>> {
+        emit(Loading())
+        val labeledSet = HashSet<String>()
+        if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
+            val user = usersDocument.collection(getInstance().currentUser!!.uid)
+            getLabeledContent(user, timeframe, labeledSet, SAVE_COLLECTION, this)
+            getLabeledContent(user, timeframe, labeledSet, DISMISS_COLLECTION, this)
+            if (isRealtime) getLoggedInAndRealtimeContent(timeframe, labeledSet, this)
+            else getLoggedInNonRealtimeContent(timeframe, labeledSet, this)
+        } else getLoggedOutNonRealtimeContent(timeframe, this)
+    }
 
     fun queryMainContentList(timestamp: Timestamp) =
             database.contentDao().queryMainContentList(timestamp, MAIN).toLiveData(pagedListConfig)
 
 
     fun queryLabeledContentList(feedType: FeedType) =
-            database.contentDao().queryLabeledContentList(feedType).toLiveData(pagedListConfig)
+            database.contentDao().queryLabeledContentList(feedType).toLiveData(pagedListConfig).asFlow()
 
     fun getContent(contentId: String) = liveData {
         this.emit(Event(contentEnCollection.document(contentId).get().await()
@@ -236,7 +236,7 @@ object ContentRepository {
     private suspend fun getLabeledContent(user: CollectionReference, timeframe: Timestamp,
                                           labeledSet: HashSet<String>,
                                           saveCollection: String,
-                                          lce: LiveDataScope<Lce<PagedListResult>>) =
+                                          lce: FlowCollector<Lce<PagedListResult>>) =
             try {
                 val list = ArrayList<Content?>()
                 user.document(COLLECTIONS_DOCUMENT)
@@ -258,7 +258,7 @@ object ContentRepository {
 
     private suspend fun getLoggedInAndRealtimeContent(timeframe: Timestamp,
                                                       labeledSet: HashSet<String>,
-                                                      lce: LiveDataScope<Lce<PagedListResult>>) =
+                                                      lce: FlowCollector<Lce<PagedListResult>>) =
             try {
                 val list = ArrayList<Content?>()
                 contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
@@ -276,7 +276,7 @@ object ContentRepository {
 
     private suspend fun getLoggedInNonRealtimeContent(timeframe: Timestamp,
                                                       labeledSet: HashSet<String>,
-                                                      lce: LiveDataScope<Lce<PagedListResult>>) =
+                                                      lce: FlowCollector<Lce<PagedListResult>>) =
             try {
                 val list = ArrayList<Content?>()
                 contentEnCollection.orderBy(TIMESTAMP, DESCENDING)
@@ -286,8 +286,7 @@ object ContentRepository {
                         ?.filter { content -> !labeledSet.contains(content.id) }
                         ?.map { content -> list.add(content) }
                 database.contentDao().insertContentList(list)
-                lce.emit(Lce.Content(PagedListResult(
-                        queryMainContentList(timeframe), "")))
+                lce.emit(Lce.Content(PagedListResult(queryMainContentList(timeframe), "")))
             } catch (error: FirebaseFirestoreException) {
                 lce.emit(Error(PagedListResult(
                         null,
@@ -296,7 +295,7 @@ object ContentRepository {
             }
 
     private suspend fun getLoggedOutNonRealtimeContent(timeframe: Timestamp,
-                                                       lce: LiveDataScope<Lce<PagedListResult>>) =
+                                                       lce: FlowCollector<Lce<PagedListResult>>) =
             try {
                 val list = ArrayList<Content?>()
                 contentEnCollection.orderBy(TIMESTAMP, DESCENDING)

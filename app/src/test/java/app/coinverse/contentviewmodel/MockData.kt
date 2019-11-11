@@ -13,6 +13,7 @@ import app.coinverse.utils.livedata.Event
 import app.coinverse.utils.models.Lce
 import app.coinverse.utils.models.Lce.Error
 import app.coinverse.utils.models.Lce.Loading
+import kotlinx.coroutines.flow.flow
 
 val mockArticleContent = Content(id = "1", contentType = ARTICLE, url = MOCK_URL)
 val mockYouTubeContent = Content(id = "1", contentType = YOUTUBE, url = MOCK_URL)
@@ -22,24 +23,27 @@ val mockDbContentListForAll = listOf(Content(id = "1"), Content(id = "2"),
         Content(id = "3"), Content(id = "4"), Content(id = "5"), Content(id = "6"))
 
 // TODO - Test liveData coroutine builder
+fun mockGetMainFeedList(mockFeedList: List<Content>, lceState: LCE_STATE) = flow {
+    when (lceState) {
+        LOADING -> emit(Loading())
+        CONTENT -> emit(Lce.Content(PagedListResult(
+                pagedList = mockQueryMainContentListLiveData(mockFeedList),
+                errorMessage = "")))
+        ERROR -> emit(Error(PagedListResult(
+                pagedList = null,
+                errorMessage = MOCK_GET_MAIN_FEED_LIST_ERROR)))
+    }
+}
 
-fun mockGetMainFeedList(mockFeedList: List<Content>, lceState: LCE_STATE) =
-        MutableLiveData<Lce<PagedListResult>>().also { lce ->
-            when (lceState) {
-                LOADING -> lce.value = Loading()
-                CONTENT -> {
-                    lce.value = Lce.Content(PagedListResult(null, ""))
-                    lce.value = Lce.Content(PagedListResult(
-                            pagedList = mockQueryMainContentList(mockFeedList),
-                            errorMessage = ""))
-                }
-                ERROR -> lce.value = Error(PagedListResult(
-                        pagedList = null,
-                        errorMessage = MOCK_GET_MAIN_FEED_LIST_ERROR))
-            }
-        }
+fun mockQueryMainContentListFlow(mockFeedList: List<Content>) = flow {
+    emit(mockFeedList.asPagedList(PagedList.Config.Builder()
+            .setEnablePlaceholders(false)
+            .setPrefetchDistance(24)
+            .setPageSize(12)
+            .build()))
+}
 
-fun mockQueryMainContentList(mockFeedList: List<Content>) =
+fun mockQueryMainContentListLiveData(mockFeedList: List<Content>) =
         MutableLiveData<PagedList<Content>>().also { pagedList ->
             pagedList.value = mockFeedList.asPagedList(PagedList.Config.Builder()
                     .setEnablePlaceholders(false)

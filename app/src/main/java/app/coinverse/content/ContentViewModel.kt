@@ -32,6 +32,7 @@ import app.coinverse.utils.models.Lce.Loading
 import app.coinverse.utils.models.ToolbarState
 import com.crashlytics.android.Crashlytics
 import com.google.firebase.Timestamp
+import kotlinx.coroutines.flow.collect
 
 class ContentViewModel : ViewModel() {
     //TODO: Add isRealtime Boolean for paid feature.
@@ -173,36 +174,36 @@ class ContentViewModel : ViewModel() {
     )
 
     private fun getContentList(event: ContentViewEvents, feedType: FeedType,
-                               isRealtime: Boolean, timeframe: Timestamp) =
-            if (feedType == MAIN) {
-                switchMap(getMainFeedList(viewModelScope, isRealtime, timeframe)) { lce ->
-                    when (lce) {
-                        is Loading -> {
-                            if (event is SwipeToRefresh)
-                                _viewEffect.send(SwipeToRefreshEffect(true))
-                            queryMainContentList(timeframe)
-                        }
-                        is Lce.Content -> {
-                            if (event is SwipeToRefresh)
-                                _viewEffect.send(SwipeToRefreshEffect(false))
-                            lce.packet.pagedList!!
-                        }
-                        is Error -> {
-                            Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
-                            if (event is SwipeToRefresh)
-                                _viewEffect.send(SwipeToRefreshEffect(false))
-                            _viewEffect.send(SnackBarEffect(
-                                    if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
-                                    else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
-                            queryMainContentList(timeframe)
-                        }
+                               isRealtime: Boolean, timeframe: Timestamp) = liveData {
+        if (feedType == MAIN) {
+            getMainFeedList(isRealtime, timeframe).collect { lce ->
+                when (lce) {
+                    is Loading -> {
+                        if (event is SwipeToRefresh)
+                            _viewEffect.send(SwipeToRefreshEffect(true))
+                        emitSource(queryMainContentList(timeframe))
+                    }
+                    is Lce.Content -> {
+                        if (event is SwipeToRefresh)
+                            _viewEffect.send(SwipeToRefreshEffect(false))
+                        emitSource(lce.packet.pagedList!!)
+                    }
+                    is Error -> {
+                        Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
+                        if (event is SwipeToRefresh)
+                            _viewEffect.send(SwipeToRefreshEffect(false))
+                        _viewEffect.send(SnackBarEffect(
+                                if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
+                                else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
+                        emitSource(queryMainContentList(timeframe))
                     }
                 }
-            } else switchMap(queryLabeledContentList(feedType)) { pagedList ->
-                _viewEffect.send(ScreenEmptyEffect(pagedList.isEmpty()))
-                liveData { emit(pagedList) }
             }
-
+        } else queryLabeledContentList(feedType).collect { pagedList ->
+            _viewEffect.send(ScreenEmptyEffect(pagedList.isEmpty()))
+            emit(pagedList)
+        }
+    }
 
     /**
      * Get audiocast player for PlayerNotificationManager in [AudioService].

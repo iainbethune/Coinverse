@@ -2,7 +2,6 @@ package app.coinverse.contentviewmodel.tests
 
 import android.widget.ProgressBar.GONE
 import android.widget.ProgressBar.VISIBLE
-import androidx.lifecycle.viewModelScope
 import app.coinverse.R.string.*
 import app.coinverse.content.ContentRepository
 import app.coinverse.content.ContentRepository.getMainFeedList
@@ -12,10 +11,7 @@ import app.coinverse.content.ContentViewModel
 import app.coinverse.content.models.ContentEffectType.*
 import app.coinverse.content.models.ContentViewEvents
 import app.coinverse.content.models.ContentViewEvents.*
-import app.coinverse.contentviewmodel.FeedLoadContentTest
-import app.coinverse.contentviewmodel.feedLoadTestCases
-import app.coinverse.contentviewmodel.mockGetMainFeedList
-import app.coinverse.contentviewmodel.mockQueryMainContentList
+import app.coinverse.contentviewmodel.*
 import app.coinverse.utils.*
 import app.coinverse.utils.FeedType.*
 import app.coinverse.utils.LCE_STATE.*
@@ -62,7 +58,6 @@ class FeedLoadContentTests(val testDispatcher: TestCoroutineDispatcher,
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
             contentViewModel.processEvent(event)
-            // TODO - Remove
             assertContentList(test, event)
         }
         SwipeToRefresh(test.feedType, test.timeframe, false).also { event ->
@@ -85,11 +80,13 @@ class FeedLoadContentTests(val testDispatcher: TestCoroutineDispatcher,
         // Coinverse
 
         // ContentRepository
-        coEvery { getMainFeedList(contentViewModel.viewModelScope, test.isRealtime, any()) } returns mockGetMainFeedList(
-                test.mockFeedList, test.lceState)
-        every { queryMainContentList(any()) } returns mockQueryMainContentList(test.mockFeedList)
-        every { queryLabeledContentList(test.feedType) } returns mockQueryMainContentList(
-                test.mockFeedList)
+        coEvery {
+            getMainFeedList(test.isRealtime, any())
+        } returns mockGetMainFeedList(test.mockFeedList, test.lceState)
+        every { queryMainContentList(any()) } returns mockQueryMainContentListLiveData(test.mockFeedList)
+        every {
+            queryLabeledContentList(test.feedType)
+        } returns mockQueryMainContentListFlow(test.mockFeedList)
 
         // FirebaseRemoteConfig - Constant values
         mockkStatic(CONSTANTS_CLASS_COMPILED_JAVA)
@@ -160,7 +157,7 @@ class FeedLoadContentTests(val testDispatcher: TestCoroutineDispatcher,
         coVerify {
             when (test.feedType) {
                 MAIN -> {
-                    getMainFeedList(contentViewModel.viewModelScope, test.isRealtime, any())
+                    getMainFeedList(test.isRealtime, any())
                     if (test.lceState == LOADING || test.lceState == ERROR) queryMainContentList(any())
                 }
                 SAVED, DISMISSED -> queryLabeledContentList(test.feedType)

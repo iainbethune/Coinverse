@@ -8,11 +8,9 @@ import app.coinverse.content.models.ContentEffectType.OpenContentSourceIntentEff
 import app.coinverse.content.models.ContentEffectType.UpdateAdsEffect
 import app.coinverse.content.models.ContentViewEvents.*
 import app.coinverse.contentviewmodel.*
-import app.coinverse.utils.ContentTestExtension
+import app.coinverse.utils.*
 import app.coinverse.utils.FeedType.*
 import app.coinverse.utils.LCE_STATE.CONTENT
-import app.coinverse.utils.observe
-import app.coinverse.utils.viewEffects
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -35,6 +33,7 @@ class NavigateContentTests(val testDispatcher: TestCoroutineDispatcher,
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
             contentViewModel.processEvent(event)
+            assertContentList(test)
         }
         ContentShared(test.mockContent).also { event ->
             contentViewModel.processEvent(event)
@@ -58,18 +57,24 @@ class NavigateContentTests(val testDispatcher: TestCoroutineDispatcher,
 
     private fun mockComponents(test: NavigateContentTest) {
         // Coinverse - ContentRepository
-        coEvery { getMainFeedList(any(), test.isRealtime, any()) } returns mockGetMainFeedList(
+        coEvery { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(
                 test.mockFeedList, CONTENT)
         every {
             queryLabeledContentList(test.feedType)
-        } returns mockQueryMainContentList(test.mockFeedList)
+        } returns mockQueryMainContentListFlow(test.mockFeedList)
         every { getContent(test.mockContent.id) } returns mockGetContent(test)
+    }
+
+    private fun assertContentList(test: NavigateContentTest) {
+        contentViewModel.feedViewState().contentList.getOrAwaitValue().also { pagedList ->
+            assertThat(pagedList).isEqualTo(test.mockFeedList)
+        }
     }
 
     private fun verifyTests(test: NavigateContentTest) {
         coVerify {
             when (test.feedType) {
-                MAIN -> getMainFeedList(any(), test.isRealtime, any())
+                MAIN -> getMainFeedList(test.isRealtime, any())
                 SAVED, DISMISSED -> queryLabeledContentList(test.feedType)
             }
         }

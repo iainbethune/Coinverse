@@ -17,8 +17,10 @@ import kotlinx.coroutines.launch
 
 /**
  * TODO - Refactor with Unidirectional Data Flow.
+ * TODO - Refactor LiveData to Coroutine Flow.
  *  See [ContentViewModel]
  *  https://medium.com/hackernoon/android-unidirectional-flow-with-livedata-bf24119e747
+ *  https://kotlinlang.org/docs/reference/coroutines/flow.html
  **/
 class PriceViewModel : ViewModel() {
 

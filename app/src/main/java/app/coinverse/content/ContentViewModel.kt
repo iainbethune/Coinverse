@@ -111,9 +111,8 @@ class ContentViewModel : ViewModel() {
             is ContentSwipeDrawed -> _viewEffect.send(EnableSwipeToRefreshEffect(false))
             is ContentSwiped -> _viewEffect.send(ContentSwipedEffect(
                     event.feedType, event.actionType, event.position))
-            is ContentLabeled -> _feedViewState.value = _feedViewState.value?.copy(contentLabeled =
-            if (event.user != null && !event.user.isAnonymous) {
-                liveData {
+            is ContentLabeled -> _feedViewState.value = _feedViewState.value?.copy(contentLabeled = liveData {
+                if (event.user != null && !event.user.isAnonymous) {
                     editContentLabels(
                             feedType = event.feedType,
                             actionType = event.actionType,
@@ -126,13 +125,11 @@ class ContentViewModel : ViewModel() {
                                     labelContentFirebaseAnalytics(event.content!!)
                                     //TODO - Move to Cloud Function. Use with WorkManager.
                                     // Return error in ContentLabeled.
-                                    updateActionAnalytics(
-                                            event.actionType, event.content, event.user)
+                                    updateActionAnalytics(event.actionType, event.content, event.user)
                                     if (event.isMainFeedEmptied)
                                         updateFeedEmptiedActionsAndAnalytics(event.user.uid)
                                 }
-                                _viewEffect.send(
-                                        NotifyItemChangedEffect(event.position))
+                                _viewEffect.send(NotifyItemChangedEffect(event.position))
                                 emit(Event(app.coinverse.content.models.ContentLabeled(event.position, "")))
                             }
                             is Error -> {
@@ -142,11 +139,11 @@ class ContentViewModel : ViewModel() {
                             }
                         }
                     }
+                } else {
+                    _viewEffect.send(NotifyItemChangedEffect(event.position))
+                    _viewEffect.send(SignInEffect(true))
+                    emit(Event(null))
                 }
-            } else {
-                _viewEffect.send(NotifyItemChangedEffect(event.position))
-                _viewEffect.send(SignInEffect(true))
-                liveData<Event<app.coinverse.content.models.ContentLabeled?>> { emit(Event(null)) }
             })
             is ContentShared -> _viewEffect.send(ShareContentIntentEffect(getContent(event.content.id)))
             is ContentSourceOpened -> _viewEffect.send(OpenContentSourceIntentEffect(event.url))
@@ -172,28 +169,26 @@ class ContentViewModel : ViewModel() {
 
     private fun getContentList(event: ContentViewEvents, feedType: FeedType,
                                isRealtime: Boolean, timeframe: Timestamp) = liveData {
-        if (feedType == MAIN) {
-            getMainFeedList(isRealtime, timeframe).collect { lce ->
-                when (lce) {
-                    is Loading -> {
-                        if (event is SwipeToRefresh)
-                            _viewEffect.send(SwipeToRefreshEffect(true))
-                        emitSource(queryMainContentList(timeframe))
-                    }
-                    is Lce.Content -> {
-                        if (event is SwipeToRefresh)
-                            _viewEffect.send(SwipeToRefreshEffect(false))
-                        emitSource(lce.packet.pagedList!!)
-                    }
-                    is Error -> {
-                        Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
-                        if (event is SwipeToRefresh)
-                            _viewEffect.send(SwipeToRefreshEffect(false))
-                        _viewEffect.send(SnackBarEffect(
-                                if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
-                                else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
-                        emitSource(queryMainContentList(timeframe))
-                    }
+        if (feedType == MAIN) getMainFeedList(isRealtime, timeframe).collect { lce ->
+            when (lce) {
+                is Loading -> {
+                    if (event is SwipeToRefresh)
+                        _viewEffect.send(SwipeToRefreshEffect(true))
+                    emitSource(queryMainContentList(timeframe))
+                }
+                is Lce.Content -> {
+                    if (event is SwipeToRefresh)
+                        _viewEffect.send(SwipeToRefreshEffect(false))
+                    emitSource(lce.packet.pagedList!!)
+                }
+                is Error -> {
+                    Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
+                    if (event is SwipeToRefresh)
+                        _viewEffect.send(SwipeToRefreshEffect(false))
+                    _viewEffect.send(SnackBarEffect(
+                            if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
+                            else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
+                    emitSource(queryMainContentList(timeframe))
                 }
             }
         } else queryLabeledContentList(feedType).collect { pagedList ->

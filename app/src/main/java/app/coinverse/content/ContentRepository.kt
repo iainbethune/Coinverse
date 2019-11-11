@@ -44,7 +44,6 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URL
 
-// TODO - Refactor LiveData to Coroutine Flow - https://kotlinlang.org/docs/reference/coroutines/flow.html
 object ContentRepository {
     private val LOG_TAG = ContentRepository::class.java.simpleName
 

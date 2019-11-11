@@ -1,6 +1,5 @@
 package app.coinverse.contentviewmodel.tests
 
-import androidx.lifecycle.viewModelScope
 import app.coinverse.analytics.Analytics
 import app.coinverse.analytics.Analytics.labelContentFirebaseAnalytics
 import app.coinverse.analytics.Analytics.updateActionAnalytics
@@ -134,8 +133,7 @@ class LabelContentTests(val testDispatcher: TestCoroutineDispatcher,
         coEvery { getMainFeedList(test.isRealtime, any()) } returns mockGetMainFeedList(
                 test.mockFeedList, CONTENT)
         every {
-            editContentLabels(contentViewModel.viewModelScope, test.feedType, test.actionType, test.mockContent,
-                    any(), test.adapterPosition)
+            editContentLabels(test.feedType, test.actionType, test.mockContent, any(), test.adapterPosition)
         } returns mockEditContentLabels(test)
         every { labelContentFirebaseAnalytics(test.mockContent) } returns mockk(relaxed = true)
         every {
@@ -152,10 +150,8 @@ class LabelContentTests(val testDispatcher: TestCoroutineDispatcher,
 
     private fun verifyTests(test: LabelContentTest) {
         coVerify {
-            if (test.isUserSignedIn) {
-                editContentLabels(contentViewModel.viewModelScope, test.feedType, test.actionType,
-                        test.mockContent, any(), test.adapterPosition)
-            }
+            if (test.isUserSignedIn)
+                editContentLabels(test.feedType, test.actionType, test.mockContent, any(), test.adapterPosition)
             when (test.feedType) {
                 MAIN -> getMainFeedList(test.isRealtime, any())
                 SAVED, DISMISSED -> queryLabeledContentList(test.feedType)

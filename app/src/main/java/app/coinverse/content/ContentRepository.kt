@@ -34,13 +34,11 @@ import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageException
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -145,8 +143,8 @@ object ContentRepository {
         }.toByteArray(), "")))
     }.flowOn(Dispatchers.IO)
 
-    fun editContentLabels(scope: CoroutineScope, feedType: FeedType, actionType: UserActionType,
-                          content: Content?, user: FirebaseUser, position: Int) = liveData {
+    fun editContentLabels(feedType: FeedType, actionType: UserActionType, content: Content?,
+                          user: FirebaseUser, position: Int) = flow {
         usersDocument.collection(user.uid).let { userReference ->
             content?.feedType =
                     if (actionType == SAVE) SAVED
@@ -162,21 +160,19 @@ object ContentRepository {
                             content = content,
                             position = position).collect { contentLabeled ->
                         when (contentLabeled) {
-                            is Lce.Content -> emitSource(addContentLabel(
-                                    scope = scope,
+                            is Lce.Content -> addContentLabel(
                                     actionType = actionType,
                                     userCollection = userReference,
                                     content = content,
-                                    position = position))
+                                    position = position).collect { emit(it) }
                             is Error -> emit(contentLabeled)
                         }
                     }
-                } else emitSource(addContentLabel(
-                        scope = scope,
+                } else addContentLabel(
                         actionType = actionType,
                         userCollection = userReference,
                         content = content,
-                        position = position))
+                        position = position).collect { emit(it) }
             }
         }
     }
@@ -317,22 +313,19 @@ object ContentRepository {
                                 + "${error.localizedMessage}")))
             }
 
-    private fun addContentLabel(scope: CoroutineScope, actionType: UserActionType,
-                                userCollection: CollectionReference,
-                                content: Content?, position: Int) = liveData {
+    private fun addContentLabel(actionType: UserActionType, userCollection: CollectionReference,
+                                content: Content?, position: Int) = flow {
         emit(Loading())
         val collection =
                 if (actionType == SAVE) SAVE_COLLECTION
                 else if (actionType == DISMISS) DISMISS_COLLECTION
                 else ""
         try {
-            scope.launch {
-                userCollection.document(COLLECTIONS_DOCUMENT).collection(collection)
-                        .document(content!!.id)
-                        .set(content).await()
-                database.contentDao().updateContent(content)
-                emit(Lce.Content(ContentLabeled(position, "")))
-            }
+            userCollection.document(COLLECTIONS_DOCUMENT).collection(collection)
+                    .document(content!!.id)
+                    .set(content).await()
+            database.contentDao().updateContent(content)
+            emit(Lce.Content(ContentLabeled(position, "")))
         } catch (error: FirebaseFirestoreException) {
             emit(Error(ContentLabeled(
                     position,

@@ -2,7 +2,6 @@ package app.coinverse.contentviewmodel
 
 import android.net.Uri
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.liveData
 import androidx.paging.PagedList
 import app.coinverse.content.models.*
 import app.coinverse.utils.*
@@ -94,7 +93,7 @@ fun mockBitmapToByteArray(test: PlayContentTest) = flow {
     }
 }
 
-fun mockEditContentLabels(test: LabelContentTest) = liveData {
+fun mockEditContentLabels(test: LabelContentTest) = flow {
     emit(when (test.lceState) {
         LOADING -> Loading()
         CONTENT -> Lce.Content(ContentLabeled(test.adapterPosition, ""))

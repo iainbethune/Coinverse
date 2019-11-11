@@ -5,7 +5,6 @@ import android.view.View
 import android.widget.ProgressBar.GONE
 import android.widget.ProgressBar.VISIBLE
 import androidx.lifecycle.*
-import androidx.lifecycle.Transformations.switchMap
 import app.coinverse.R.string.*
 import app.coinverse.analytics.Analytics.labelContentFirebaseAnalytics
 import app.coinverse.analytics.Analytics.updateActionAnalytics
@@ -112,45 +111,43 @@ class ContentViewModel : ViewModel() {
             is ContentSwipeDrawed -> _viewEffect.send(EnableSwipeToRefreshEffect(false))
             is ContentSwiped -> _viewEffect.send(ContentSwipedEffect(
                     event.feedType, event.actionType, event.position))
-            is ContentLabeled -> _feedViewState.value = _feedViewState.value?.copy(
-                    contentLabeled =
-                    if (event.user != null && !event.user.isAnonymous) {
-                        switchMap(editContentLabels(
-                                scope = viewModelScope,
-                                feedType = event.feedType,
-                                actionType = event.actionType,
-                                content = event.content,
-                                user = event.user,
-                                position = event.position)) { lce ->
-                            liveData {
-                                when (lce) {
-                                    is Lce.Content -> {
-                                        if (event.feedType == MAIN) {
-                                            labelContentFirebaseAnalytics(event.content!!)
-                                            //TODO - Move to Cloud Function. Use with WorkManager.
-                                            // Return error in ContentLabeled.
-                                            updateActionAnalytics(
-                                                    event.actionType, event.content, event.user)
-                                            if (event.isMainFeedEmptied)
-                                                updateFeedEmptiedActionsAndAnalytics(event.user.uid)
-                                        }
-                                        _viewEffect.send(
-                                                NotifyItemChangedEffect(event.position))
-                                        emit(Event(app.coinverse.content.models.ContentLabeled(event.position, "")))
-                                    }
-                                    is Error -> {
-                                        _viewEffect.send(SnackBarEffect(CONTENT_LABEL_ERROR))
-                                        Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
-                                        emit(Event(null))
-                                    }
+            is ContentLabeled -> _feedViewState.value = _feedViewState.value?.copy(contentLabeled =
+            if (event.user != null && !event.user.isAnonymous) {
+                liveData {
+                    editContentLabels(
+                            feedType = event.feedType,
+                            actionType = event.actionType,
+                            content = event.content,
+                            user = event.user,
+                            position = event.position).collect { lce ->
+                        when (lce) {
+                            is Lce.Content -> {
+                                if (event.feedType == MAIN) {
+                                    labelContentFirebaseAnalytics(event.content!!)
+                                    //TODO - Move to Cloud Function. Use with WorkManager.
+                                    // Return error in ContentLabeled.
+                                    updateActionAnalytics(
+                                            event.actionType, event.content, event.user)
+                                    if (event.isMainFeedEmptied)
+                                        updateFeedEmptiedActionsAndAnalytics(event.user.uid)
                                 }
+                                _viewEffect.send(
+                                        NotifyItemChangedEffect(event.position))
+                                emit(Event(app.coinverse.content.models.ContentLabeled(event.position, "")))
+                            }
+                            is Error -> {
+                                _viewEffect.send(SnackBarEffect(CONTENT_LABEL_ERROR))
+                                Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
+                                emit(Event(null))
                             }
                         }
-                    } else {
-                        _viewEffect.send(NotifyItemChangedEffect(event.position))
-                        _viewEffect.send(SignInEffect(true))
-                        liveData<Event<app.coinverse.content.models.ContentLabeled?>> { emit(Event(null)) }
-                    })
+                    }
+                }
+            } else {
+                _viewEffect.send(NotifyItemChangedEffect(event.position))
+                _viewEffect.send(SignInEffect(true))
+                liveData<Event<app.coinverse.content.models.ContentLabeled?>> { emit(Event(null)) }
+            })
             is ContentShared -> _viewEffect.send(ShareContentIntentEffect(getContent(event.content.id)))
             is ContentSourceOpened -> _viewEffect.send(OpenContentSourceIntentEffect(event.url))
             is UpdateAds -> _viewEffect.send(UpdateAdsEffect())
@@ -298,7 +295,7 @@ class ContentViewModel : ViewModel() {
      * @return String combined error message
      */
     private fun getAudioPlayerErrors(a: Event<ContentUri>, b: Event<ContentBitmap>) =
-            a.peekEvent()!!.errorMessage.apply { if (this.isNotEmpty()) this }.apply {
+            a.peekEvent().errorMessage.apply { if (this.isNotEmpty()) this }.apply {
                 b.peekEvent().errorMessage.also {
                     if (it.isNotEmpty()) this.plus(" " + it)
                 }

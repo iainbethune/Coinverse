@@ -225,8 +225,10 @@ class PlayContentTests(val testDispatcher: TestCoroutineDispatcher,
             }
             if (test.mockContent.contentType == ARTICLE) {
                 getAudiocast(ContentSelected(test.mockPosition, test.mockContent))
-                getContentUri(test.mockContent.id, test.mockFilePath)
-                bitmapToByteArray(test.mockPreviewImageUrl)
+                if (test.lceState != LOADING) {
+                    getContentUri(test.mockContent.id, test.mockFilePath)
+                    bitmapToByteArray(test.mockPreviewImageUrl)
+                }
             }
         }
         confirmVerified(ContentRepository)

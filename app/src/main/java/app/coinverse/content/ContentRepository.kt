@@ -40,6 +40,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.io.ByteArrayOutputStream
@@ -111,42 +112,39 @@ object ContentRepository {
         }
     }
 
-    fun getContentUri(contentId: String, filePath: String) = liveData {
-        val data = this
-        data.emit(Loading())
+    fun getContentUri(contentId: String, filePath: String) = flow {
+        emit(Loading())
         try {
             val uri = FirebaseStorage.getInstance(firebaseApp(true))
                     .reference.child(filePath).downloadUrl.await()
             contentEnCollection.document(contentId) // Update content Audio Uri.
-                    .update(AUDIO_URL, Regex(AUDIO_URL_TOKEN_REGEX)
-                            .replace(uri.toString(), "")).await()
-            data.emit(Lce.Content(ContentPlayer(
+                    .update(AUDIO_URL, Regex(AUDIO_URL_TOKEN_REGEX).replace(uri.toString(), "")).await()
+            emit(Lce.Content(ContentPlayer(
                     uri = uri,
                     image = ByteArray(0),
                     errorMessage = "")))
         } catch (error: StorageException) {
-            data.emit(Error(ContentPlayer(
+            emit(Error(ContentPlayer(
                     Uri.parse(""),
                     ByteArray(0), "getContentUri error - ${error.localizedMessage}")))
         }
     }
 
-    fun bitmapToByteArray(url: String) = liveData(Dispatchers.IO) {
-        val data = this
-        data.emit(Loading())
-        data.emit(Lce.Content(ContentBitmap(ByteArrayOutputStream().apply {
+    fun bitmapToByteArray(url: String) = flow {
+        emit(Loading())
+        emit(Lce.Content(ContentBitmap(ByteArrayOutputStream().apply {
             try {
                 BitmapFactory.decodeStream(URL(url).openConnection().apply {
                     doInput = true
                     connect()
                 }.getInputStream())
             } catch (e: IOException) {
-                data.emit(Error(ContentBitmap(ByteArray(0),
+                emit(Error(ContentBitmap(ByteArray(0),
                         "bitmapToByteArray error or null - ${e.localizedMessage}")))
                 null
             }?.compress(CompressFormat.JPEG, BITMAP_COMPRESSION_QUALITY, this)
         }.toByteArray(), "")))
-    }
+    }.flowOn(Dispatchers.IO)
 
     fun editContentLabels(scope: CoroutineScope, feedType: FeedType, actionType: UserActionType,
                           content: Content?, user: FirebaseUser, position: Int) =
@@ -268,8 +266,7 @@ object ContentRepository {
                 database.contentDao().insertContentList(list)
             } catch (error: FirebaseFirestoreException) {
                 lce.emit(Error(PagedListResult(null,
-                        CONTENT_LOGGED_IN_REALTIME_ERROR +
-                                "${error.localizedMessage}")))
+                        CONTENT_LOGGED_IN_REALTIME_ERROR + "${error.localizedMessage}")))
             }
 
     private suspend fun getLoggedInNonRealtimeContent(timeframe: Timestamp,

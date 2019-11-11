@@ -68,33 +68,31 @@ fun mockGetAudiocast(test: PlayContentTest) = flow {
     }
 }
 
-fun mockGetContentUri(test: PlayContentTest) =
-        MutableLiveData<Lce<ContentPlayer>>().apply {
-            when (test.lceState) {
-                LOADING -> value = Loading()
-                CONTENT -> value = Lce.Content(ContentPlayer(
-                        uri = Uri.parse(""),
-                        image = test.mockPreviewImageByteArray,
-                        errorMessage = ""))
-                ERROR -> value = Error(ContentPlayer(
-                        uri = Uri.parse(""),
-                        image = ByteArray(0),
-                        errorMessage = MOCK_GET_CONTENT_URI_ERROR))
-            }
-        }
+fun mockGetContentUri(test: PlayContentTest) = flow {
+    when (test.lceState) {
+        LOADING -> emit(Loading())
+        CONTENT -> emit(Lce.Content(ContentPlayer(
+                uri = Uri.parse(""),
+                image = test.mockPreviewImageByteArray,
+                errorMessage = "")))
+        ERROR -> emit(Error(ContentPlayer(
+                uri = Uri.parse(""),
+                image = ByteArray(0),
+                errorMessage = MOCK_GET_CONTENT_URI_ERROR)))
+    }
+}
 
-fun mockBitmapToByteArray(test: PlayContentTest) =
-        MutableLiveData<Lce<ContentBitmap>>().apply {
-            when (test.lceState) {
-                LOADING -> value = Loading()
-                CONTENT -> value = Lce.Content(ContentBitmap(
-                        image = test.mockPreviewImageByteArray,
-                        errorMessage = ""))
-                ERROR -> value = Error(ContentBitmap(
-                        image = ByteArray(0),
-                        errorMessage = MOCK_GET_BITMAP_TO_BYTEARRAY_ERROR))
-            }
-        }
+fun mockBitmapToByteArray(test: PlayContentTest) = flow {
+    when (test.lceState) {
+        LOADING -> emit(Loading())
+        CONTENT -> emit(Lce.Content(ContentBitmap(
+                image = test.mockPreviewImageByteArray,
+                errorMessage = "")))
+        ERROR -> emit(Error(ContentBitmap(
+                image = ByteArray(0),
+                errorMessage = MOCK_GET_BITMAP_TO_BYTEARRAY_ERROR)))
+    }
+}
 
 fun mockEditContentLabels(test: LabelContentTest) = liveData {
     emit(when (test.lceState) {

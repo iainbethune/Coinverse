@@ -205,6 +205,7 @@ class ContentViewModel : ViewModel() {
         }
     }
 
+    // TODO - Refactor MediatorLiveData to Coroutine Flow - https://kotlinlang.org/docs/reference/coroutines/flow.html
     /**
      * Get audiocast player for PlayerNotificationManager in [AudioService].
      *
@@ -214,8 +215,7 @@ class ContentViewModel : ViewModel() {
      * @return MediatorLiveData<Event<ContentPlayer>> audio player
      */
     private fun getAudioPlayer(contentId: String, filePath: String, imageUrl: String) =
-            getContentUri(contentId, filePath).combinePlayerData(
-                    bitmapToByteArray(imageUrl)) { a, b ->
+            getContentUri(contentId, filePath).combinePlayerData(bitmapToByteArray(imageUrl)) { a, b ->
                 Event(ContentPlayer(
                         uri = a.peekEvent().uri,
                         image = b.peekEvent().image,
@@ -259,18 +259,17 @@ class ContentViewModel : ViewModel() {
      * @param filePath String Google Cloud Storage location
      * @return LiveData<(Event<ContentUri>?)> content mp3 file
      */
-    private fun getContentUri(contentId: String, filePath: String) =
-            switchMap(ContentRepository.getContentUri(contentId, filePath)) { lce ->
-                liveData {
-                    when (lce) {
-                        is Lce.Content -> emit(Event(ContentUri(lce.packet.uri, "")))
-                        is Error -> {
-                            Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
-                            emit(Event(ContentUri(lce.packet.uri, lce.packet.errorMessage)))
-                        }
-                    }
+    private fun getContentUri(contentId: String, filePath: String) = liveData {
+        ContentRepository.getContentUri(contentId, filePath).collect { lce ->
+            when (lce) {
+                is Lce.Content -> emit(Event(ContentUri(lce.packet.uri, "")))
+                is Error -> {
+                    Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
+                    emit(Event(ContentUri(lce.packet.uri, lce.packet.errorMessage)))
                 }
             }
+        }
+    }
 
     /**
      * Converts content image Bitmap preview to ByteArray
@@ -278,21 +277,18 @@ class ContentViewModel : ViewModel() {
      * @param url String content image preview url
      * @return LiveData<(Event<ContentBitmap>?)> content preview image as ByteArray
      */
-    private fun bitmapToByteArray(url: String) =
-            switchMap(ContentRepository.bitmapToByteArray(url)) { lce ->
-                liveData {
-                    when (lce) {
-                        is Lce.Content -> emit(Event(ContentBitmap(
-                                lce.packet.image, lce.packet.errorMessage)))
-                        is Error -> {
-                            Crashlytics.log(Log.WARN, LOG_TAG,
-                                    "bitmapToByteArray error or null - " +
-                                            "${lce.packet.errorMessage}")
-                            emit(Event(ContentBitmap(lce.packet.image, lce.packet.errorMessage)))
-                        }
-                    }
+    private fun bitmapToByteArray(url: String) = liveData {
+        ContentRepository.bitmapToByteArray(url).collect { lce ->
+            when (lce) {
+                is Lce.Content -> emit(Event(ContentBitmap(lce.packet.image, lce.packet.errorMessage)))
+                is Error -> {
+                    Crashlytics.log(Log.WARN, LOG_TAG,
+                            "bitmapToByteArray error or null - ${lce.packet.errorMessage}")
+                    emit(Event(ContentBitmap(lce.packet.image, lce.packet.errorMessage)))
                 }
             }
+        }
+    }
 
     /**
      * Collects and combines errors from building the audio player.

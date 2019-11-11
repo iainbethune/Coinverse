@@ -2,6 +2,7 @@ package app.coinverse.contentviewmodel
 
 import android.net.Uri
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.liveData
 import androidx.paging.PagedList
 import app.coinverse.content.models.*
 import app.coinverse.utils.*
@@ -21,7 +22,6 @@ val mockDbContentListForDay = listOf(Content(id = "1"), Content(id = "2"),
 val mockDbContentListForAll = listOf(Content(id = "1"), Content(id = "2"),
         Content(id = "3"), Content(id = "4"), Content(id = "5"), Content(id = "6"))
 
-// TODO - Test liveData coroutine builder
 fun mockGetMainFeedList(mockFeedList: List<Content>, lceState: LCE_STATE) = flow {
     when (lceState) {
         LOADING -> emit(Loading())
@@ -34,6 +34,7 @@ fun mockGetMainFeedList(mockFeedList: List<Content>, lceState: LCE_STATE) = flow
     }
 }
 
+// TODO - pagedList builder
 fun mockQueryMainContentListFlow(mockFeedList: List<Content>) = flow {
     emit(mockFeedList.asPagedList(PagedList.Config.Builder()
             .setEnablePlaceholders(false)
@@ -42,14 +43,14 @@ fun mockQueryMainContentListFlow(mockFeedList: List<Content>) = flow {
             .build()))
 }
 
-fun mockQueryMainContentListLiveData(mockFeedList: List<Content>) =
-        MutableLiveData<PagedList<Content>>().also { pagedList ->
-            pagedList.value = mockFeedList.asPagedList(PagedList.Config.Builder()
-                    .setEnablePlaceholders(false)
-                    .setPrefetchDistance(24)
-                    .setPageSize(12)
-                    .build())
-        }
+// TODO - pagedList builder
+fun mockQueryMainContentListLiveData(mockFeedList: List<Content>) = liveData {
+    emit(mockFeedList.asPagedList(PagedList.Config.Builder()
+            .setEnablePlaceholders(false)
+            .setPrefetchDistance(24)
+            .setPageSize(12)
+            .build()))
+}
 
 fun mockGetAudiocast(test: PlayContentTest) = flow {
     when (test.lceState) {

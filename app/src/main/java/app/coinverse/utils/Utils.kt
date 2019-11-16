@@ -30,7 +30,7 @@ suspend fun Query.awaitRealtime() = suspendCancellableCoroutine<QueryResponse> {
     addSnapshotListener({ value, error ->
         if (error == null && continuation.isActive && !value!!.isEmpty)
             continuation.resume(QueryResponse(value, null))
-        else if (error != null)
+        else if (error != null && continuation.isActive)
             continuation.resume(QueryResponse(null, error))
     })
 }

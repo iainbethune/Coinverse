@@ -51,11 +51,11 @@ object ContentRepository {
         emit(Loading())
         val labeledSet = HashSet<String>()
         if (getInstance().currentUser != null && !getInstance().currentUser!!.isAnonymous) {
-            if (isRealtime) getLoggedInAndRealtimeContent(timeframe, labeledSet, this)
-            else getLoggedInNonRealtimeContent(timeframe, labeledSet, this)
             val user = usersDocument.collection(getInstance().currentUser!!.uid)
             syncLabeledContent(user, timeframe, labeledSet, SAVE_COLLECTION, this)
             syncLabeledContent(user, timeframe, labeledSet, DISMISS_COLLECTION, this)
+            if (isRealtime) getLoggedInAndRealtimeContent(timeframe, labeledSet, this)
+            else getLoggedInNonRealtimeContent(timeframe, labeledSet, this)
         } else getLoggedOutNonRealtimeContent(timeframe, this)
     }
 

@@ -11,6 +11,7 @@ interface ContentViewEvents {
     fun contentSwipeDrawed(event: ContentSwipeDrawed)
     fun contentSwiped(event: ContentSwiped)
     fun contentShared(event: ContentShared)
+    fun contentSourceOpened(event: ContentSourceOpened)
 }
 
 sealed class ContentViewEventType {

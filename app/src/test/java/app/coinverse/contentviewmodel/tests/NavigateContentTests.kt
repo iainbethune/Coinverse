@@ -42,7 +42,7 @@ class NavigateContentTests(val testDispatcher: TestCoroutineDispatcher,
                     .isEqualTo(test.mockContent)
         }
         ContentSourceOpened(test.mockContent.url).also { event ->
-            contentViewModel.processEvent(event)
+            contentViewModel.contentSourceOpened(event)
             assertThat(contentViewModel.viewEffects().openContentSourceIntent.observe())
                     .isEqualTo(OpenContentSourceIntentEffect(test.mockContent.url))
         }

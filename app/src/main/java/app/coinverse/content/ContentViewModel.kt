@@ -76,6 +76,10 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
         _viewEffect.send(ShareContentIntentEffect(getContent(event.content.id)))
     }
 
+    override fun contentSourceOpened(event: ContentSourceOpened) {
+        _viewEffect.send(OpenContentSourceIntentEffect(event.url))
+    }
+
     fun processEvent(event: ContentViewEventType) {
         when (event) {
             is FeedLoadComplete -> _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
@@ -162,7 +166,6 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
                     emit(Event(null))
                 }
             })
-            is ContentSourceOpened -> _viewEffect.send(OpenContentSourceIntentEffect(event.url))
             is UpdateAds -> _viewEffect.send(UpdateAdsEffect())
         }
     }

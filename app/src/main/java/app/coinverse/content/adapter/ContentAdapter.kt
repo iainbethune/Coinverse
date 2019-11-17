@@ -54,7 +54,7 @@ class ContentAdapter(val contentViewModel: ContentViewModel, val viewEvents: Con
             preview, contentTypeLogo -> _contentSelected.value =
                     Event(ContentSelected(view.getTag(ADAPTER_POSITION_KEY) as Int, content))
             share -> viewEvents.contentShared(ContentShared(content))
-            openSource -> _contentViewEvent.value = Event(ContentSourceOpened(content.url))
+            openSource -> viewEvents.contentSourceOpened(ContentSourceOpened(content.url))
         }
     }
 

@@ -90,7 +90,7 @@ class ContentFragment : Fragment() {
         if (savedInstanceState != null) {
             savedRecyclerPosition = savedInstanceState.getInt(CONTENT_RECYCLER_VIEW_POSITION)
             if (homeViewModel.accountType.value == FREE)
-                _viewEvent.value = Event(UpdateAds())
+                viewEvents.updateAds(UpdateAds())
         }
     }
 

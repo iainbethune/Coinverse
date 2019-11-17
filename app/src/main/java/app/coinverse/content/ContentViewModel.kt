@@ -121,6 +121,10 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
         _viewEffect.send(OpenContentSourceIntentEffect(event.url))
     }
 
+    override fun updateAds(event: UpdateAds) {
+        _viewEffect.send(UpdateAdsEffect())
+    }
+
     fun processEvent(event: ContentViewEventType) {
         when (event) {
             is FeedLoadComplete -> _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
@@ -166,7 +170,6 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
                     emit(Event(null))
                 }
             })
-            is UpdateAds -> _viewEffect.send(UpdateAdsEffect())
         }
     }
 

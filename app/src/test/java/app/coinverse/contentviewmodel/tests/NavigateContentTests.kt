@@ -48,7 +48,7 @@ class NavigateContentTests(val testDispatcher: TestCoroutineDispatcher,
         }
         // Occurs on Fragment 'onViewStateRestored'
         UpdateAds().also { event ->
-            contentViewModel.processEvent(event)
+            contentViewModel.updateAds(event)
             assertThat(contentViewModel.viewEffects().updateAds.observe().javaClass)
                     .isEqualTo(UpdateAdsEffect::class.java)
         }

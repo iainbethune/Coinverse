@@ -60,10 +60,6 @@ class FeedLoadContentTests(val testDispatcher: TestCoroutineDispatcher,
             contentViewModel.feedLoad(event)
             assertContentList(test, event)
         }
-        /*FeedLoad(test.feedType, test.timeframe, false).also { event ->
-            contentViewModel.processEvent(event)
-            assertContentList(test, event)
-        }*/
         SwipeToRefresh(test.feedType, test.timeframe, false).also { event ->
             contentViewModel.processEvent(event)
             assertContentList(test, event)

@@ -61,7 +61,7 @@ class FeedLoadContentTests(val testDispatcher: TestCoroutineDispatcher,
             assertContentList(test, event)
         }
         SwipeToRefresh(test.feedType, test.timeframe, false).also { event ->
-            contentViewModel.processEvent(event)
+            contentViewModel.swipeToRefresh(event)
             assertContentList(test, event)
             contentViewModel.feedViewState().contentList.getOrAwaitValue().also { pagedList ->
                 assertThat(pagedList).isEqualTo(test.mockFeedList)

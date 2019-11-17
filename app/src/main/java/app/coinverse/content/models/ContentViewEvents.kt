@@ -9,6 +9,7 @@ import com.google.firebase.auth.FirebaseUser
 interface ContentViewEvents {
     fun feedLoad(event: FeedLoad)
     fun feedLoadComplete(event: FeedLoadComplete)
+    fun swipeToRefresh(event: SwipeToRefresh)
     fun contentSelected(event: ContentSelected)
     fun contentSwipeDrawed(event: ContentSwipeDrawed)
     fun contentSwiped(event: ContentSwiped)

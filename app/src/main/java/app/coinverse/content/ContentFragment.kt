@@ -137,7 +137,7 @@ class ContentFragment : Fragment() {
     }
 
     fun swipeToRefresh() {
-        _viewEvent.value = Event(SwipeToRefresh(
+        viewEvents.swipeToRefresh(SwipeToRefresh(
                 feedType, homeViewModel.timeframe.value!!, homeViewModel.isRealtime.value!!))
     }
 

@@ -68,6 +68,14 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
         _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
     }
 
+    override fun swipeToRefresh(event: SwipeToRefresh) {
+        _feedViewState.value = _feedViewState.value?.copy(contentList = getContentList(
+                eventType = event,
+                feedType = event.feedType,
+                isRealtime = event.isRealtime,
+                timeframe = getTimeframe(event.timeframe)))
+    }
+
     override fun contentSelected(event: ContentSelected) {
         val contentSelected = ContentSelected(event.position, event.content)
         when (contentSelected.content.contentType) {
@@ -133,12 +141,6 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
         when (event) {
             is AudioPlayerLoad -> _playerViewState.value = PlayerViewState(
                     getAudioPlayer(event.contentId, event.filePath, event.previewImageUrl))
-            is SwipeToRefresh ->
-                _feedViewState.value = _feedViewState.value?.copy(contentList = getContentList(
-                        eventType = event,
-                        feedType = event.feedType,
-                        isRealtime = event.isRealtime,
-                        timeframe = getTimeframe(event.timeframe)))
             is ContentLabeled -> _feedViewState.value = _feedViewState.value?.copy(contentLabeled = liveData {
                 if (event.user != null && !event.user.isAnonymous) {
                     editContentLabels(

@@ -110,11 +110,10 @@ class LabelContentTests(val testDispatcher: TestCoroutineDispatcher,
                     }
                 } else {
                     contentViewModel.feedViewState().contentLabeled.observe()
-                    assertThat(contentViewModel.viewEffects().notifyItemChanged
-                            .observe())
+                    assertThat(contentViewModel.viewEffects().notifyItemChanged.observe())
                             .isEqualTo(NotifyItemChangedEffect(test.adapterPosition))
-                    assertThat(contentViewModel.viewEffects().signIn
-                            .observe()).isEqualTo(SignInEffect(true))
+                    assertThat(contentViewModel.viewEffects().signIn.observe())
+                            .isEqualTo(SignInEffect(true))
                 }
             }
         }

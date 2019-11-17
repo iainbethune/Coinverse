@@ -13,8 +13,6 @@ import android.view.animation.AnimationUtils
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.content.res.AppCompatResources.getDrawable
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.navigation.findNavController
@@ -31,7 +29,6 @@ import app.coinverse.analytics.Analytics.setCurrentScreen
 import app.coinverse.content.adapter.ContentAdapter
 import app.coinverse.content.adapter.ItemTouchHelper
 import app.coinverse.content.models.ContentToPlay
-import app.coinverse.content.models.ContentViewEventType
 import app.coinverse.content.models.ContentViewEventType.*
 import app.coinverse.content.models.ContentViewEvents
 import app.coinverse.content.models.FeedViewState
@@ -43,7 +40,6 @@ import app.coinverse.utils.ContentType.YOUTUBE
 import app.coinverse.utils.FeedType.*
 import app.coinverse.utils.PaymentStatus.FREE
 import app.coinverse.utils.SignInType.DIALOG
-import app.coinverse.utils.livedata.Event
 import app.coinverse.utils.livedata.EventObserver
 import com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_COLLAPSED
 import com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
@@ -59,8 +55,6 @@ private val LOG_TAG = ContentFragment::class.java.simpleName
 
 class ContentFragment : Fragment() {
     private lateinit var viewEvents: ContentViewEvents
-    private val viewEvent: LiveData<Event<ContentViewEventType>> get() = _viewEvent
-    private val _viewEvent = MutableLiveData<Event<ContentViewEventType>>()
     private lateinit var feedType: FeedType
     private lateinit var binding: FragmentContentBinding
     private lateinit var contentViewModel: ContentViewModel
@@ -401,7 +395,7 @@ class ContentFragment : Fragment() {
     private fun openContentFromNotification() {
         if (openContentFromNotification)
             openContentFromNotificationContentToPlay?.let {
-                _viewEvent.value = Event(ContentSelected(it.position, it.content))
+                viewEvents.contentSelected(ContentSelected(it.position, it.content))
                 contentRecyclerView.layoutManager?.scrollToPosition(it.position)
                 openContentFromNotification = false
             }

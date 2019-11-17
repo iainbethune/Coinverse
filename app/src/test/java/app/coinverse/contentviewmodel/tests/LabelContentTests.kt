@@ -55,7 +55,7 @@ class LabelContentTests(val testDispatcher: TestCoroutineDispatcher,
             assertContentList(test)
         }
         ContentSwipeDrawed(test.isDrawed).also { event ->
-            contentViewModel.processEvent(event)
+            contentViewModel.contentSwipeDrawed(event)
             assertEnableSwipeToRefresh()
         }
         ContentSwiped(test.feedType, test.actionType, test.adapterPosition).also { event ->

@@ -19,6 +19,7 @@ import app.coinverse.R.string.save
 import app.coinverse.content.models.ContentViewEventType
 import app.coinverse.content.models.ContentViewEventType.ContentSwipeDrawed
 import app.coinverse.content.models.ContentViewEventType.ContentSwiped
+import app.coinverse.content.models.ContentViewEvents
 import app.coinverse.utils.*
 import app.coinverse.utils.FeedType.*
 import app.coinverse.utils.PaymentStatus.FREE
@@ -30,7 +31,8 @@ import com.mopub.nativeads.MoPubRecyclerAdapter
 
 private val LOG_TAG = ItemTouchHelper::class.java.simpleName
 
-class ItemTouchHelper(val _contentViewEvent: MutableLiveData<Event<ContentViewEventType>>) {
+class ItemTouchHelper(val viewEvents: ContentViewEvents,
+                      val _contentViewEvent: MutableLiveData<Event<ContentViewEventType>>) {
 
     fun build(context: Context, paymentStatus: PaymentStatus, feedType: FeedType,
               moPubAdapter: MoPubRecyclerAdapter?) = ItemTouchHelper(object : Callback() {
@@ -58,7 +60,7 @@ class ItemTouchHelper(val _contentViewEvent: MutableLiveData<Event<ContentViewEv
         override fun onChildDraw(c: Canvas, recyclerView: RecyclerView,
                                  viewHolder: RecyclerView.ViewHolder, dX: Float, dY: Float,
                                  actionState: Int, isCurrentlyActive: Boolean) {
-            _contentViewEvent.value = Event(ContentSwipeDrawed(true))
+            viewEvents.contentSwipeDrawed(ContentSwipeDrawed(true))
             if (actionState == ACTION_STATE_SWIPE) {
                 var icon = getDrawable(context, ic_error_black_48dp)
                 val iconLeft: Int

@@ -11,7 +11,11 @@ import app.coinverse.content.ContentViewModel
 import app.coinverse.content.models.ContentEffectType.*
 import app.coinverse.content.models.ContentViewEventType
 import app.coinverse.content.models.ContentViewEventType.*
-import app.coinverse.contentviewmodel.*
+import app.coinverse.contentviewmodel.FeedLoadContentTest
+import app.coinverse.contentviewmodel.mockGetMainFeedList
+import app.coinverse.contentviewmodel.mockQueryMainContentListFlow
+import app.coinverse.contentviewmodel.mockQueryMainContentListLiveData
+import app.coinverse.contentviewmodel.testCases.feedLoadTestCases
 import app.coinverse.utils.*
 import app.coinverse.utils.FeedType.*
 import app.coinverse.utils.LCE_STATE.*

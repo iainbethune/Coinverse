@@ -7,7 +7,11 @@ import app.coinverse.content.ContentViewModel
 import app.coinverse.content.models.ContentEffectType.OpenContentSourceIntentEffect
 import app.coinverse.content.models.ContentEffectType.UpdateAdsEffect
 import app.coinverse.content.models.ContentViewEventType.*
-import app.coinverse.contentviewmodel.*
+import app.coinverse.contentviewmodel.NavigateContentTest
+import app.coinverse.contentviewmodel.mockGetContent
+import app.coinverse.contentviewmodel.mockGetMainFeedList
+import app.coinverse.contentviewmodel.mockQueryMainContentListFlow
+import app.coinverse.contentviewmodel.testCases.navigateContentTestCases
 import app.coinverse.utils.*
 import app.coinverse.utils.FeedType.*
 import app.coinverse.utils.LCE_STATE.CONTENT

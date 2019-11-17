@@ -17,6 +17,7 @@ import app.coinverse.content.models.ContentPlayer
 import app.coinverse.content.models.ContentToPlay
 import app.coinverse.content.models.ContentViewEventType.*
 import app.coinverse.contentviewmodel.*
+import app.coinverse.contentviewmodel.testCases.playContentTestCases
 import app.coinverse.home.HomeViewModel
 import app.coinverse.utils.*
 import app.coinverse.utils.ContentType.ARTICLE

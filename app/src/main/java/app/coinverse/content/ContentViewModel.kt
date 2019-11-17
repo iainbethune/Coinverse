@@ -49,7 +49,10 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
     // View events
 
     fun attachEvents(fragment: Fragment) {
-        if (fragment is ContentFragment) fragment.initEvents(this)
+        when (fragment) {
+            is ContentFragment -> fragment.initEvents(this)
+            is AudioFragment -> fragment.initEvents(this)
+        }
     }
 
     override fun feedLoad(event: FeedLoad) {
@@ -66,6 +69,11 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
 
     override fun feedLoadComplete(event: FeedLoadComplete) {
         _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
+    }
+
+    override fun audioPlayerLoad(event: AudioPlayerLoad) {
+        _playerViewState.value = PlayerViewState(
+                getAudioPlayer(event.contentId, event.filePath, event.previewImageUrl))
     }
 
     override fun swipeToRefresh(event: SwipeToRefresh) {
@@ -139,8 +147,6 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
 
     fun processEvent(event: ContentViewEventType) {
         when (event) {
-            is AudioPlayerLoad -> _playerViewState.value = PlayerViewState(
-                    getAudioPlayer(event.contentId, event.filePath, event.previewImageUrl))
             is ContentLabeled -> _feedViewState.value = _feedViewState.value?.copy(contentLabeled = liveData {
                 if (event.user != null && !event.user.isAnonymous) {
                     editContentLabels(

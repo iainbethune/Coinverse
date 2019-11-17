@@ -63,11 +63,10 @@ class PlayContentTests(val testDispatcher: TestCoroutineDispatcher,
             assertContentSelected(test)
         }
         if (test.mockContent.contentType == ARTICLE)
-            AudioPlayerLoad(test.mockContent.id, test.mockFilePath, test.mockPreviewImageUrl)
-                    .also { event ->
-                        contentViewModel.processEvent(event)
-                        assertAudioPlayerLoad(test)
-                    }
+            AudioPlayerLoad(test.mockContent.id, test.mockFilePath, test.mockPreviewImageUrl).also { event ->
+                contentViewModel.audioPlayerLoad(event)
+                assertAudioPlayerLoad(test)
+            }
         verifyTests(test)
     }
 

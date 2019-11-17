@@ -64,6 +64,10 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
         })
     }
 
+    override fun feedLoadComplete(event: FeedLoadComplete) {
+        _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
+    }
+
     override fun contentSelected(event: ContentSelected) {
         val contentSelected = ContentSelected(event.position, event.content)
         when (contentSelected.content.contentType) {
@@ -127,7 +131,6 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
 
     fun processEvent(event: ContentViewEventType) {
         when (event) {
-            is FeedLoadComplete -> _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
             is AudioPlayerLoad -> _playerViewState.value = PlayerViewState(
                     getAudioPlayer(event.contentId, event.filePath, event.previewImageUrl))
             is SwipeToRefresh ->

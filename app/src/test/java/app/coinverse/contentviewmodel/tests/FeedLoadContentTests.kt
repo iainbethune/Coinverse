@@ -129,7 +129,7 @@ class FeedLoadContentTests(val testDispatcher: TestCoroutineDispatcher,
                 }
             }
             // ScreenEmptyEffect
-            contentViewModel.processEvent(FeedLoadComplete(hasContent = pagedList.isNotEmpty()))
+            contentViewModel.feedLoadComplete(FeedLoadComplete(hasContent = pagedList.isNotEmpty()))
             contentViewModel.viewEffects().screenEmpty.observe().also { effect ->
                 assertThat(effect).isEqualTo(ScreenEmptyEffect(pagedList.isEmpty()))
             }

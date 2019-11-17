@@ -89,8 +89,7 @@ class ContentFragment : Fragment() {
         super.onViewStateRestored(savedInstanceState)
         if (savedInstanceState != null) {
             savedRecyclerPosition = savedInstanceState.getInt(CONTENT_RECYCLER_VIEW_POSITION)
-            if (homeViewModel.accountType.value == FREE)
-                viewEvents.updateAds(UpdateAds())
+            if (homeViewModel.accountType.value == FREE) viewEvents.updateAds(UpdateAds())
         }
     }
 
@@ -101,8 +100,10 @@ class ContentFragment : Fragment() {
         homeViewModel = ViewModelProviders.of(activity!!).get(HomeViewModel::class.java)
         contentViewModel.attachEvents(this)
         if (savedInstanceState == null)
-            viewEvents.feedLoad(FeedLoad(feedType, homeViewModel.timeframe.value!!,
-                    homeViewModel.isRealtime.value!!))
+            viewEvents.feedLoad(FeedLoad(
+                    feedType = feedType,
+                    timeframe = homeViewModel.timeframe.value!!,
+                    isRealtime = homeViewModel.isRealtime.value!!))
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
@@ -200,7 +201,7 @@ class ContentFragment : Fragment() {
             setToolbar(viewState)
             viewState.contentList.observe(viewLifecycleOwner, Observer { pagedList ->
                 adapter.submitList(pagedList)
-                _viewEvent.value = Event(FeedLoadComplete(pagedList.isNotEmpty()))
+                viewEvents.feedLoadComplete(FeedLoadComplete(pagedList.isNotEmpty()))
                 if (pagedList.isNotEmpty())
                     if (savedRecyclerPosition != 0) {
                         contentRecyclerView.layoutManager?.scrollToPosition(

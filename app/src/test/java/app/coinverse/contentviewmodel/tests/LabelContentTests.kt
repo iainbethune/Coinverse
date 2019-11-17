@@ -9,7 +9,7 @@ import app.coinverse.content.ContentRepository.getMainFeedList
 import app.coinverse.content.ContentRepository.queryLabeledContentList
 import app.coinverse.content.ContentViewModel
 import app.coinverse.content.models.ContentEffectType.*
-import app.coinverse.content.models.ContentViewEvents.*
+import app.coinverse.content.models.ContentViewEventType.*
 import app.coinverse.contentviewmodel.*
 import app.coinverse.home.HomeViewModel
 import app.coinverse.utils.*
@@ -51,7 +51,7 @@ class LabelContentTests(val testDispatcher: TestCoroutineDispatcher,
     fun `Label Content`(test: LabelContentTest) = testDispatcher.runBlockingTest {
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
-            contentViewModel.processEvent(event)
+            contentViewModel.feedLoad(event)
             assertContentList(test)
         }
         ContentSwipeDrawed(test.isDrawed).also { event ->

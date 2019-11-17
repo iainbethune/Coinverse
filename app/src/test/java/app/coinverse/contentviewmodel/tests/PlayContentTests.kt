@@ -15,7 +15,7 @@ import app.coinverse.content.models.ContentEffectType.NotifyItemChangedEffect
 import app.coinverse.content.models.ContentEffectType.SnackBarEffect
 import app.coinverse.content.models.ContentPlayer
 import app.coinverse.content.models.ContentToPlay
-import app.coinverse.content.models.ContentViewEvents.*
+import app.coinverse.content.models.ContentViewEventType.*
 import app.coinverse.contentviewmodel.*
 import app.coinverse.home.HomeViewModel
 import app.coinverse.utils.*
@@ -55,7 +55,7 @@ class PlayContentTests(val testDispatcher: TestCoroutineDispatcher,
     fun `Play Content`(test: PlayContentTest) = testDispatcher.runBlockingTest {
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
-            contentViewModel.processEvent(event)
+            contentViewModel.feedLoad(event)
             assertContentList(test)
         }
         ContentSelected(test.mockPosition, test.mockContent).also { event ->

@@ -4,6 +4,7 @@ import android.util.Log
 import android.view.View
 import android.widget.ProgressBar.GONE
 import android.widget.ProgressBar.VISIBLE
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.*
 import app.coinverse.R.string.*
 import app.coinverse.analytics.Analytics.labelContentFirebaseAnalytics
@@ -18,8 +19,8 @@ import app.coinverse.content.ContentRepository.queryLabeledContentList
 import app.coinverse.content.ContentRepository.queryMainContentList
 import app.coinverse.content.models.*
 import app.coinverse.content.models.ContentEffectType.*
-import app.coinverse.content.models.ContentViewEvents.*
-import app.coinverse.content.models.ContentViewEvents.ContentLabeled
+import app.coinverse.content.models.ContentViewEventType.*
+import app.coinverse.content.models.ContentViewEventType.ContentLabeled
 import app.coinverse.utils.*
 import app.coinverse.utils.ContentType.*
 import app.coinverse.utils.DateAndTime.getTimeframe
@@ -33,7 +34,7 @@ import com.crashlytics.android.Crashlytics
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.flow.collect
 
-class ContentViewModel : ViewModel() {
+class ContentViewModel : ViewModel(), ContentViewEvents {
     //TODO: Add isRealtime Boolean for paid feature.
     var contentPlaying = Content()
     val feedViewState: LiveData<FeedViewState> get() = _feedViewState
@@ -45,25 +46,30 @@ class ContentViewModel : ViewModel() {
     private val _viewEffect = MutableLiveData<ContentEffects>()
     private val contentLoadingSet = hashSetOf<String>()
 
-    fun processEvent(event: ContentViewEvents) {
+    fun attachEvents(fragment: Fragment) {
+        if (fragment is ContentFragment) fragment.initEvents(this)
+    }
+
+    override fun feedLoad(event: FeedLoad) {
+        _feedViewState.value = FeedViewState(
+                feedType = event.feedType,
+                timeframe = event.timeframe,
+                toolbar = setToolbar(event.feedType),
+                contentList = getContentList(event, event.feedType, event.isRealtime,
+                        getTimeframe(event.timeframe)))
+        _viewEffect.value = ContentEffects(updateAds = liveData {
+            emit(Event(UpdateAdsEffect()))
+        })
+    }
+
+    fun processEvent(event: ContentViewEventType) {
         when (event) {
-            is FeedLoad -> {
-                _feedViewState.value = FeedViewState(
-                        feedType = event.feedType,
-                        timeframe = event.timeframe,
-                        toolbar = setToolbar(event.feedType),
-                        contentList = getContentList(event, event.feedType, event.isRealtime,
-                                getTimeframe(event.timeframe)))
-                _viewEffect.value = ContentEffects(updateAds = liveData {
-                    emit(Event(UpdateAdsEffect()))
-                })
-            }
             is FeedLoadComplete -> _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
             is AudioPlayerLoad -> _playerViewState.value = PlayerViewState(
                     getAudioPlayer(event.contentId, event.filePath, event.previewImageUrl))
             is SwipeToRefresh ->
                 _feedViewState.value = _feedViewState.value?.copy(contentList = getContentList(
-                        event = event,
+                        eventType = event,
                         feedType = event.feedType,
                         isRealtime = event.isRealtime,
                         timeframe = getTimeframe(event.timeframe)))
@@ -167,26 +173,26 @@ class ContentViewModel : ViewModel() {
             }
     )
 
-    private fun getContentList(event: ContentViewEvents, feedType: FeedType,
+    private fun getContentList(eventType: ContentViewEventType, feedType: FeedType,
                                isRealtime: Boolean, timeframe: Timestamp) = liveData {
         if (feedType == MAIN) getMainFeedList(isRealtime, timeframe).collect { lce ->
             when (lce) {
                 is Loading -> {
-                    if (event is SwipeToRefresh)
+                    if (eventType is SwipeToRefresh)
                         _viewEffect.send(SwipeToRefreshEffect(true))
                     emitSource(queryMainContentList(timeframe))
                 }
                 is Lce.Content -> {
-                    if (event is SwipeToRefresh)
+                    if (eventType is SwipeToRefresh)
                         _viewEffect.send(SwipeToRefreshEffect(false))
                     emitSource(lce.packet.pagedList!!)
                 }
                 is Error -> {
                     Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
-                    if (event is SwipeToRefresh)
+                    if (eventType is SwipeToRefresh)
                         _viewEffect.send(SwipeToRefreshEffect(false))
                     _viewEffect.send(SnackBarEffect(
-                            if (event is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
+                            if (eventType is FeedLoad) CONTENT_REQUEST_NETWORK_ERROR
                             else CONTENT_REQUEST_SWIPE_TO_REFRESH_ERROR))
                     emitSource(queryMainContentList(timeframe))
                 }

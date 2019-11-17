@@ -6,7 +6,7 @@ import app.coinverse.content.ContentRepository.queryLabeledContentList
 import app.coinverse.content.ContentViewModel
 import app.coinverse.content.models.ContentEffectType.OpenContentSourceIntentEffect
 import app.coinverse.content.models.ContentEffectType.UpdateAdsEffect
-import app.coinverse.content.models.ContentViewEvents.*
+import app.coinverse.content.models.ContentViewEventType.*
 import app.coinverse.contentviewmodel.*
 import app.coinverse.utils.*
 import app.coinverse.utils.FeedType.*
@@ -32,7 +32,7 @@ class NavigateContentTests(val testDispatcher: TestCoroutineDispatcher,
     fun `Navigate Content`(test: NavigateContentTest) = testDispatcher.runBlockingTest {
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
-            contentViewModel.processEvent(event)
+            contentViewModel.feedLoad(event)
             assertContentList(test)
         }
         ContentShared(test.mockContent).also { event ->

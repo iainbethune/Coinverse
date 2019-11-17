@@ -31,8 +31,9 @@ import app.coinverse.analytics.Analytics.setCurrentScreen
 import app.coinverse.content.adapter.ContentAdapter
 import app.coinverse.content.adapter.ItemTouchHelper
 import app.coinverse.content.models.ContentToPlay
+import app.coinverse.content.models.ContentViewEventType
+import app.coinverse.content.models.ContentViewEventType.*
 import app.coinverse.content.models.ContentViewEvents
-import app.coinverse.content.models.ContentViewEvents.*
 import app.coinverse.content.models.FeedViewState
 import app.coinverse.databinding.FragmentContentBinding
 import app.coinverse.home.HomeViewModel
@@ -57,8 +58,9 @@ import kotlinx.android.synthetic.main.fragment_content.*
 private val LOG_TAG = ContentFragment::class.java.simpleName
 
 class ContentFragment : Fragment() {
-    private val viewEvent: LiveData<Event<ContentViewEvents>> get() = _viewEvent
-    private val _viewEvent = MutableLiveData<Event<ContentViewEvents>>()
+    private lateinit var viewEvents: ContentViewEvents
+    private val viewEvent: LiveData<Event<ContentViewEventType>> get() = _viewEvent
+    private val _viewEvent = MutableLiveData<Event<ContentViewEventType>>()
     private lateinit var feedType: FeedType
     private lateinit var binding: FragmentContentBinding
     private lateinit var contentViewModel: ContentViewModel
@@ -97,8 +99,9 @@ class ContentFragment : Fragment() {
         getFeedType()
         contentViewModel = ViewModelProviders.of(this).get(ContentViewModel::class.java)
         homeViewModel = ViewModelProviders.of(activity!!).get(HomeViewModel::class.java)
+        contentViewModel.attachEvents(this)
         if (savedInstanceState == null)
-            _viewEvent.value = Event(FeedLoad(feedType, homeViewModel.timeframe.value!!,
+            viewEvents.feedLoad(FeedLoad(feedType, homeViewModel.timeframe.value!!,
                     homeViewModel.isRealtime.value!!))
     }
 
@@ -135,6 +138,10 @@ class ContentFragment : Fragment() {
     fun swipeToRefresh() {
         _viewEvent.value = Event(SwipeToRefresh(
                 feedType, homeViewModel.timeframe.value!!, homeViewModel.isRealtime.value!!))
+    }
+
+    fun initEvents(viewEvents: ContentViewEvents) {
+        this.viewEvents = viewEvents
     }
 
     private fun initAdapters() {

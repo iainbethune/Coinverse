@@ -10,7 +10,7 @@ import androidx.paging.toLiveData
 import app.coinverse.BuildConfig.BUILD_TYPE
 import app.coinverse.analytics.models.ContentAction
 import app.coinverse.content.models.*
-import app.coinverse.content.models.ContentViewEvents.ContentSelected
+import app.coinverse.content.models.ContentViewEventType.ContentSelected
 import app.coinverse.content.room.CoinverseDatabase.database
 import app.coinverse.firebase.*
 import app.coinverse.utils.*

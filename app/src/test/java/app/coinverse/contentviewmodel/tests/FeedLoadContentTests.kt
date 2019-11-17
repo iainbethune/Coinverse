@@ -9,8 +9,8 @@ import app.coinverse.content.ContentRepository.queryLabeledContentList
 import app.coinverse.content.ContentRepository.queryMainContentList
 import app.coinverse.content.ContentViewModel
 import app.coinverse.content.models.ContentEffectType.*
-import app.coinverse.content.models.ContentViewEvents
-import app.coinverse.content.models.ContentViewEvents.*
+import app.coinverse.content.models.ContentViewEventType
+import app.coinverse.content.models.ContentViewEventType.*
 import app.coinverse.contentviewmodel.*
 import app.coinverse.utils.*
 import app.coinverse.utils.FeedType.*
@@ -45,7 +45,7 @@ class FeedLoadContentTests(val testDispatcher: TestCoroutineDispatcher,
     fun `Feed Load`(test: FeedLoadContentTest) = testDispatcher.runBlockingTest {
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
-            contentViewModel.processEvent(event)
+            contentViewModel.feedLoad(event)
             assertThatToolbarState(test)
             assertContentList(test, event)
         }
@@ -57,9 +57,13 @@ class FeedLoadContentTests(val testDispatcher: TestCoroutineDispatcher,
     fun `Swipe-to-Refresh`(test: FeedLoadContentTest) = testDispatcher.runBlockingTest {
         mockComponents(test)
         FeedLoad(test.feedType, test.timeframe, false).also { event ->
-            contentViewModel.processEvent(event)
+            contentViewModel.feedLoad(event)
             assertContentList(test, event)
         }
+        /*FeedLoad(test.feedType, test.timeframe, false).also { event ->
+            contentViewModel.processEvent(event)
+            assertContentList(test, event)
+        }*/
         SwipeToRefresh(test.feedType, test.timeframe, false).also { event ->
             contentViewModel.processEvent(event)
             assertContentList(test, event)
@@ -114,7 +118,7 @@ class FeedLoadContentTests(val testDispatcher: TestCoroutineDispatcher,
         ))
     }
 
-    private fun assertContentList(test: FeedLoadContentTest, event: ContentViewEvents) {
+    private fun assertContentList(test: FeedLoadContentTest, event: ContentViewEventType) {
         contentViewModel.feedViewState().contentList.getOrAwaitValue().also { pagedList ->
             assertThat(pagedList).isEqualTo(test.mockFeedList)
             assertThat(contentViewModel.feedViewState().timeframe).isEqualTo(test.timeframe)

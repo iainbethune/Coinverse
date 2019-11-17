@@ -15,6 +15,7 @@ import app.coinverse.content.ContentViewModel
 import app.coinverse.content.models.Content
 import app.coinverse.content.models.ContentViewEventType
 import app.coinverse.content.models.ContentViewEventType.*
+import app.coinverse.content.models.ContentViewEvents
 import app.coinverse.databinding.CellContentBinding.inflate
 import app.coinverse.utils.ADAPTER_POSITION_KEY
 import app.coinverse.utils.livedata.Event
@@ -30,7 +31,7 @@ private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<Content>() {
             oldContent == newContent
 }
 
-class ContentAdapter(val contentViewModel: ContentViewModel,
+class ContentAdapter(val contentViewModel: ContentViewModel, val viewEvents: ContentViewEvents,
                      val _contentViewEvent: MutableLiveData<Event<ContentViewEventType>>)
     : PagedListAdapter<Content, ContentAdapter.ViewHolder>(DIFF_CALLBACK) {
 
@@ -52,7 +53,7 @@ class ContentAdapter(val contentViewModel: ContentViewModel,
         when (view.id) {
             preview, contentTypeLogo -> _contentSelected.value =
                     Event(ContentSelected(view.getTag(ADAPTER_POSITION_KEY) as Int, content))
-            share -> _contentViewEvent.value = Event(ContentShared(content))
+            share -> viewEvents.contentShared(ContentShared(content))
             openSource -> _contentViewEvent.value = Event(ContentSourceOpened(content.url))
         }
     }

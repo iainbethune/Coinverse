@@ -36,7 +36,7 @@ class NavigateContentTests(val testDispatcher: TestCoroutineDispatcher,
             assertContentList(test)
         }
         ContentShared(test.mockContent).also { event ->
-            contentViewModel.processEvent(event)
+            contentViewModel.contentShared(event)
             assertThat(contentViewModel.viewEffects().shareContentIntent.observe()
                     .contentRequest.observe())
                     .isEqualTo(test.mockContent)

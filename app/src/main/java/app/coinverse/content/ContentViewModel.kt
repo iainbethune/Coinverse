@@ -46,6 +46,8 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
     private val _viewEffect = MutableLiveData<ContentEffects>()
     private val contentLoadingSet = hashSetOf<String>()
 
+    // View events
+
     fun attachEvents(fragment: Fragment) {
         if (fragment is ContentFragment) fragment.initEvents(this)
     }
@@ -68,6 +70,10 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
 
     override fun contentSwiped(event: ContentSwiped) {
         _viewEffect.send(ContentSwipedEffect(event.feedType, event.actionType, event.position))
+    }
+
+    override fun contentShared(event: ContentShared) {
+        _viewEffect.send(ShareContentIntentEffect(getContent(event.content.id)))
     }
 
     fun processEvent(event: ContentViewEventType) {
@@ -156,7 +162,6 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
                     emit(Event(null))
                 }
             })
-            is ContentShared -> _viewEffect.send(ShareContentIntentEffect(getContent(event.content.id)))
             is ContentSourceOpened -> _viewEffect.send(OpenContentSourceIntentEffect(event.url))
             is UpdateAds -> _viewEffect.send(UpdateAdsEffect())
         }

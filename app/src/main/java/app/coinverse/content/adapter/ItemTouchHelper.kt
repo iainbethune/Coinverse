@@ -48,9 +48,9 @@ class ItemTouchHelper(val viewEvents: ContentViewEvents) {
 
         override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
             viewEvents.contentSwiped(ContentSwiped(
-                    feedType,
-                    if (direction == RIGHT_SWIPE && feedType != SAVED) SAVE else DISMISS,
-                    viewHolder.adapterPosition))
+                    feedType = feedType,
+                    actionType = if (direction == RIGHT_SWIPE && feedType != SAVED) SAVE else DISMISS,
+                    position = viewHolder.adapterPosition))
         }
 
         override fun onChildDraw(c: Canvas, recyclerView: RecyclerView,

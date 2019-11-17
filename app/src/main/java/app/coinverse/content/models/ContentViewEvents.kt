@@ -10,6 +10,7 @@ interface ContentViewEvents {
     fun feedLoad(event: FeedLoad)
     fun contentSwipeDrawed(event: ContentSwipeDrawed)
     fun contentSwiped(event: ContentSwiped)
+    fun contentShared(event: ContentShared)
 }
 
 sealed class ContentViewEventType {

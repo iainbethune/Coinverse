@@ -92,7 +92,7 @@ class LabelContentTests(val testDispatcher: TestCoroutineDispatcher,
                     position = contentSwipedEffect.position,
                     content = test.mockContent,
                     isMainFeedEmptied = false).also { event ->
-                contentViewModel.processEvent(event)
+                contentViewModel.contentLabeled(event)
                 if (test.isUserSignedIn) {
                     when (test.lceState) {
                         CONTENT -> {

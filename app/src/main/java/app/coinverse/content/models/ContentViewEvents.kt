@@ -14,6 +14,7 @@ interface ContentViewEvents {
     fun contentSelected(event: ContentSelected)
     fun contentSwipeDrawed(event: ContentSwipeDrawed)
     fun contentSwiped(event: ContentSwiped)
+    fun contentLabeled(event: ContentViewEventType.ContentLabeled)
     fun contentShared(event: ContentShared)
     fun contentSourceOpened(event: ContentSourceOpened)
     fun updateAds(event: UpdateAds)

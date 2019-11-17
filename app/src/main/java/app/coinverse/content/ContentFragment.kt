@@ -124,13 +124,6 @@ class ContentFragment : Fragment() {
         observeViewEffects()
     }
 
-    override fun onResume() {
-        super.onResume()
-        viewEvent.observe(viewLifecycleOwner, EventObserver { event ->
-            contentViewModel.processEvent(event)
-        })
-    }
-
     override fun onDestroy() {
         if (homeViewModel.accountType.value == FREE) moPubAdapter.destroy()
         super.onDestroy()
@@ -255,13 +248,13 @@ class ContentFragment : Fragment() {
             })
             effect.contentSwiped.observe(viewLifecycleOwner, EventObserver {
                 FirebaseAuth.getInstance().currentUser.let { user ->
-                    _viewEvent.value = Event(ContentLabeled(
-                            feedType,
-                            it.actionType,
-                            user,
-                            getAdapterPosition(it.position),
-                            adapter.getContent(getAdapterPosition(it.position)),
-                            if (feedType == MAIN) adapter.itemCount == 1 else false))
+                    viewEvents.contentLabeled(ContentLabeled(
+                            feedType = feedType,
+                            actionType = it.actionType,
+                            user = user,
+                            position = getAdapterPosition(it.position),
+                            content = adapter.getContent(getAdapterPosition(it.position)),
+                            isMainFeedEmptied = if (feedType == MAIN) adapter.itemCount == 1 else false))
                 }
             })
             effect.snackBar.observe(viewLifecycleOwner, EventObserver {

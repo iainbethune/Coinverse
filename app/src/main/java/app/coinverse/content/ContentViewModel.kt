@@ -133,6 +133,43 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
         _viewEffect.send(ContentSwipedEffect(event.feedType, event.actionType, event.position))
     }
 
+    override fun contentLabeled(event: ContentLabeled) {
+        _feedViewState.value = _feedViewState.value?.copy(contentLabeled = liveData {
+            if (event.user != null && !event.user.isAnonymous) {
+                editContentLabels(
+                        feedType = event.feedType,
+                        actionType = event.actionType,
+                        content = event.content,
+                        user = event.user,
+                        position = event.position).collect { lce ->
+                    when (lce) {
+                        is Lce.Content -> {
+                            if (event.feedType == MAIN) {
+                                labelContentFirebaseAnalytics(event.content!!)
+                                //TODO - Move to Cloud Function. Use with WorkManager.
+                                // Return error in ContentLabeled.
+                                updateActionAnalytics(event.actionType, event.content, event.user)
+                                if (event.isMainFeedEmptied)
+                                    updateFeedEmptiedActionsAndAnalytics(event.user.uid)
+                            }
+                            _viewEffect.send(NotifyItemChangedEffect(event.position))
+                            emit(Event(app.coinverse.content.models.ContentLabeled(event.position, "")))
+                        }
+                        is Error -> {
+                            _viewEffect.send(SnackBarEffect(CONTENT_LABEL_ERROR))
+                            Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
+                            emit(Event(null))
+                        }
+                    }
+                }
+            } else {
+                _viewEffect.send(NotifyItemChangedEffect(event.position))
+                _viewEffect.send(SignInEffect(true))
+                emit(Event(null))
+            }
+        })
+    }
+
     override fun contentShared(event: ContentShared) {
         _viewEffect.send(ShareContentIntentEffect(getContent(event.content.id)))
     }
@@ -143,45 +180,6 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
 
     override fun updateAds(event: UpdateAds) {
         _viewEffect.send(UpdateAdsEffect())
-    }
-
-    fun processEvent(event: ContentViewEventType) {
-        when (event) {
-            is ContentLabeled -> _feedViewState.value = _feedViewState.value?.copy(contentLabeled = liveData {
-                if (event.user != null && !event.user.isAnonymous) {
-                    editContentLabels(
-                            feedType = event.feedType,
-                            actionType = event.actionType,
-                            content = event.content,
-                            user = event.user,
-                            position = event.position).collect { lce ->
-                        when (lce) {
-                            is Lce.Content -> {
-                                if (event.feedType == MAIN) {
-                                    labelContentFirebaseAnalytics(event.content!!)
-                                    //TODO - Move to Cloud Function. Use with WorkManager.
-                                    // Return error in ContentLabeled.
-                                    updateActionAnalytics(event.actionType, event.content, event.user)
-                                    if (event.isMainFeedEmptied)
-                                        updateFeedEmptiedActionsAndAnalytics(event.user.uid)
-                                }
-                                _viewEffect.send(NotifyItemChangedEffect(event.position))
-                                emit(Event(app.coinverse.content.models.ContentLabeled(event.position, "")))
-                            }
-                            is Error -> {
-                                _viewEffect.send(SnackBarEffect(CONTENT_LABEL_ERROR))
-                                Crashlytics.log(Log.ERROR, LOG_TAG, lce.packet.errorMessage)
-                                emit(Event(null))
-                            }
-                        }
-                    }
-                } else {
-                    _viewEffect.send(NotifyItemChangedEffect(event.position))
-                    _viewEffect.send(SignInEffect(true))
-                    emit(Event(null))
-                }
-            })
-        }
     }
 
     private fun setToolbar(feedType: FeedType) = ToolbarState(

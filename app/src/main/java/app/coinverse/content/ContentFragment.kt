@@ -147,9 +147,9 @@ class ContentFragment : Fragment() {
     private fun initAdapters() {
         val paymentStatus = homeViewModel.accountType.value
         contentRecyclerView.layoutManager = LinearLayoutManager(context)
-        adapter = ContentAdapter(contentViewModel, viewEvents, _viewEvent).apply {
+        adapter = ContentAdapter(contentViewModel, viewEvents).apply {
             this.contentSelected.observe(viewLifecycleOwner, EventObserver { contentSelected ->
-                _contentViewEvent.value = Event(ContentSelected(
+                viewEvents.contentSelected(ContentSelected(
                         getAdapterPosition(contentSelected.position), contentSelected.content))
             })
         }

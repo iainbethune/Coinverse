@@ -64,6 +64,47 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
         })
     }
 
+    override fun contentSelected(event: ContentSelected) {
+        val contentSelected = ContentSelected(event.position, event.content)
+        when (contentSelected.content.contentType) {
+            ARTICLE -> _feedViewState.value = _feedViewState.value?.copy(contentToPlay = liveData {
+                getAudiocast(contentSelected).collect { lce ->
+                    when (lce) {
+                        is Loading -> {
+                            setContentLoadingStatus(contentSelected.content.id, VISIBLE)
+                            _viewEffect.send(NotifyItemChangedEffect(contentSelected.position))
+                            emit(Event(null))
+                        }
+                        is Lce.Content -> {
+                            setContentLoadingStatus(contentSelected.content.id, GONE)
+                            _viewEffect.send(NotifyItemChangedEffect(contentSelected.position))
+                            emit(Event(lce.packet))
+                        }
+                        is Error -> {
+                            setContentLoadingStatus(contentSelected.content.id, GONE)
+                            _viewEffect.send(NotifyItemChangedEffect(contentSelected.position))
+                            _viewEffect.send(SnackBarEffect(
+                                    if (lce.packet.filePath.equals(TTS_CHAR_LIMIT_ERROR))
+                                        TTS_CHAR_LIMIT_ERROR_MESSAGE
+                                    else CONTENT_PLAY_ERROR))
+                            emit(Event(null))
+                        }
+                    }
+                }
+            })
+            YOUTUBE -> {
+                setContentLoadingStatus(contentSelected.content.id, View.GONE)
+                _viewEffect.send(NotifyItemChangedEffect(contentSelected.position))
+                _feedViewState.value = _feedViewState.value?.copy(
+                        contentToPlay = liveData<Event<ContentToPlay?>> {
+                            emit(Event(ContentToPlay(contentSelected.position,
+                                    contentSelected.content, "", "")))
+                        })
+            }
+            NONE -> throw IllegalArgumentException("contentType expected, contentType is 'NONE'")
+        }
+    }
+
     override fun contentSwipeDrawed(event: ContentSwipeDrawed) {
         _viewEffect.send(EnableSwipeToRefreshEffect(false))
     }
@@ -91,47 +132,6 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
                         feedType = event.feedType,
                         isRealtime = event.isRealtime,
                         timeframe = getTimeframe(event.timeframe)))
-            is ContentSelected -> {
-                val contentSelected = ContentSelected(event.position, event.content)
-                when (contentSelected.content.contentType) {
-                    ARTICLE -> _feedViewState.value = _feedViewState.value?.copy(contentToPlay =
-                    liveData {
-                        getAudiocast(contentSelected).collect { lce ->
-                            when (lce) {
-                                is Loading -> {
-                                    setContentLoadingStatus(contentSelected.content.id, VISIBLE)
-                                    _viewEffect.send(NotifyItemChangedEffect(contentSelected.position))
-                                    emit(Event(null))
-                                }
-                                is Lce.Content -> {
-                                    setContentLoadingStatus(contentSelected.content.id, GONE)
-                                    _viewEffect.send(NotifyItemChangedEffect(contentSelected.position))
-                                    emit(Event(lce.packet))
-                                }
-                                is Error -> {
-                                    setContentLoadingStatus(contentSelected.content.id, GONE)
-                                    _viewEffect.send(NotifyItemChangedEffect(contentSelected.position))
-                                    _viewEffect.send(SnackBarEffect(
-                                            if (lce.packet.filePath.equals(TTS_CHAR_LIMIT_ERROR))
-                                                TTS_CHAR_LIMIT_ERROR_MESSAGE
-                                            else CONTENT_PLAY_ERROR))
-                                    emit(Event(null))
-                                }
-                            }
-                        }
-                    })
-                    YOUTUBE -> {
-                        setContentLoadingStatus(contentSelected.content.id, View.GONE)
-                        _viewEffect.send(NotifyItemChangedEffect(contentSelected.position))
-                        _feedViewState.value = _feedViewState.value?.copy(
-                                contentToPlay = liveData<Event<ContentToPlay?>> {
-                                    emit(Event(ContentToPlay(contentSelected.position,
-                                            contentSelected.content, "", "")))
-                                })
-                    }
-                    NONE -> throw IllegalArgumentException("contentType expected, contentType is 'NONE'")
-                }
-            }
             is ContentLabeled -> _feedViewState.value = _feedViewState.value?.copy(contentLabeled = liveData {
                 if (event.user != null && !event.user.isAnonymous) {
                     editContentLabels(

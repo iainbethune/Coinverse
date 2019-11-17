@@ -59,7 +59,7 @@ class PlayContentTests(val testDispatcher: TestCoroutineDispatcher,
             assertContentList(test)
         }
         ContentSelected(test.mockPosition, test.mockContent).also { event ->
-            contentViewModel.processEvent(event)
+            contentViewModel.contentSelected(event)
             assertContentSelected(test)
         }
         if (test.mockContent.contentType == ARTICLE)

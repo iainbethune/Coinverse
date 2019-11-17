@@ -188,7 +188,7 @@ class ContentFragment : Fragment() {
             moPubAdapter.setContentChangeStrategy(MOVE_ALL_ADS_WITH_CONTENT)
             contentRecyclerView.adapter = moPubAdapter
         } else /* PAID */ contentRecyclerView.adapter = adapter
-        ItemTouchHelper(viewEvents, _viewEvent).apply {
+        ItemTouchHelper(viewEvents).apply {
             this.build(context!!, paymentStatus!!, feedType,
                     if (paymentStatus == FREE) moPubAdapter else null)
                     .attachToRecyclerView(contentRecyclerView)

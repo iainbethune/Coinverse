@@ -59,7 +59,7 @@ class LabelContentTests(val testDispatcher: TestCoroutineDispatcher,
             assertEnableSwipeToRefresh()
         }
         ContentSwiped(test.feedType, test.actionType, test.adapterPosition).also { event ->
-            contentViewModel.processEvent(event)
+            contentViewModel.contentSwiped(event)
             assertContentLabeled(test)
         }
         verifyTests(test)

@@ -1,7 +1,6 @@
 package app.coinverse.content.models
 
-import app.coinverse.content.models.ContentViewEventType.ContentSwipeDrawed
-import app.coinverse.content.models.ContentViewEventType.FeedLoad
+import app.coinverse.content.models.ContentViewEventType.*
 import app.coinverse.utils.FeedType
 import app.coinverse.utils.Timeframe
 import app.coinverse.utils.UserActionType
@@ -10,6 +9,7 @@ import com.google.firebase.auth.FirebaseUser
 interface ContentViewEvents {
     fun feedLoad(event: FeedLoad)
     fun contentSwipeDrawed(event: ContentSwipeDrawed)
+    fun contentSwiped(event: ContentSwiped)
 }
 
 sealed class ContentViewEventType {

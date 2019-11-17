@@ -7,7 +7,6 @@ import android.graphics.Paint
 import android.graphics.drawable.ColorDrawable
 import androidx.core.content.ContextCompat.getColor
 import androidx.core.content.ContextCompat.getDrawable
-import androidx.lifecycle.MutableLiveData
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.ItemTouchHelper.*
 import androidx.recyclerview.widget.RecyclerView
@@ -16,7 +15,6 @@ import app.coinverse.R.dimen
 import app.coinverse.R.drawable.*
 import app.coinverse.R.string.dismiss
 import app.coinverse.R.string.save
-import app.coinverse.content.models.ContentViewEventType
 import app.coinverse.content.models.ContentViewEventType.ContentSwipeDrawed
 import app.coinverse.content.models.ContentViewEventType.ContentSwiped
 import app.coinverse.content.models.ContentViewEvents
@@ -26,13 +24,11 @@ import app.coinverse.utils.PaymentStatus.FREE
 import app.coinverse.utils.PaymentStatus.PAID
 import app.coinverse.utils.UserActionType.DISMISS
 import app.coinverse.utils.UserActionType.SAVE
-import app.coinverse.utils.livedata.Event
 import com.mopub.nativeads.MoPubRecyclerAdapter
 
 private val LOG_TAG = ItemTouchHelper::class.java.simpleName
 
-class ItemTouchHelper(val viewEvents: ContentViewEvents,
-                      val _contentViewEvent: MutableLiveData<Event<ContentViewEventType>>) {
+class ItemTouchHelper(val viewEvents: ContentViewEvents) {
 
     fun build(context: Context, paymentStatus: PaymentStatus, feedType: FeedType,
               moPubAdapter: MoPubRecyclerAdapter?) = ItemTouchHelper(object : Callback() {
@@ -51,7 +47,7 @@ class ItemTouchHelper(val viewEvents: ContentViewEvents,
                             target: RecyclerView.ViewHolder) = false
 
         override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-            _contentViewEvent.value = Event(ContentSwiped(
+            viewEvents.contentSwiped(ContentSwiped(
                     feedType,
                     if (direction == RIGHT_SWIPE && feedType != SAVED) SAVE else DISMISS,
                     viewHolder.adapterPosition))

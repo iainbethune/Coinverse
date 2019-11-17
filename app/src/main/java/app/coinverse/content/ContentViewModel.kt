@@ -66,6 +66,10 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
         _viewEffect.send(EnableSwipeToRefreshEffect(false))
     }
 
+    override fun contentSwiped(event: ContentSwiped) {
+        _viewEffect.send(ContentSwipedEffect(event.feedType, event.actionType, event.position))
+    }
+
     fun processEvent(event: ContentViewEventType) {
         when (event) {
             is FeedLoadComplete -> _viewEffect.send(ScreenEmptyEffect(!event.hasContent))
@@ -118,8 +122,6 @@ class ContentViewModel : ViewModel(), ContentViewEvents {
                     NONE -> throw IllegalArgumentException("contentType expected, contentType is 'NONE'")
                 }
             }
-            is ContentSwiped -> _viewEffect.send(ContentSwipedEffect(
-                    event.feedType, event.actionType, event.position))
             is ContentLabeled -> _feedViewState.value = _feedViewState.value?.copy(contentLabeled = liveData {
                 if (event.user != null && !event.user.isAnonymous) {
                     editContentLabels(
